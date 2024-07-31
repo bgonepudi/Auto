@@ -6,14 +6,24 @@ Sub ListJSONFiles()
     Dim i As Long
     Dim ws As Worksheet
     Dim rng As Range
+    Dim sheetName As String
+
+    sheetName = "JSON Files"
+
+    ' Delete the sheet if it already exists
+    On Error Resume Next
+    Application.DisplayAlerts = False
+    Sheets(sheetName).Delete
+    Application.DisplayAlerts = True
+    On Error GoTo 0
 
     ' Get the folder path from cell D15
     folderPath = ThisWorkbook.Sheets("Sheet1").Range("D15").Value
     If Right(folderPath, 1) <> "\" Then folderPath = folderPath & "\"
 
     ' Create a new sheet
-    Sheets.Add(After:=Sheets(Sheets.Count)).Name = "JSON Files"
-    Set ws = Sheets("JSON Files")
+    Sheets.Add(After:=Sheets(Sheets.Count)).Name = sheetName
+    Set ws = Sheets(sheetName)
 
     ' Set up headers
     ws.Cells(1, 1).Value = "File Name"
@@ -47,6 +57,25 @@ Sub ListJSONFiles()
         .InCellDropdown = True
         .ShowInput = True
         .ShowError = True
+    End With
+
+    ' Apply conditional formatting
+    With rng.FormatConditions
+        .Delete ' Remove any existing conditional formatting
+        ' Add conditional format for "Y"
+        .Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""Y"""
+        With .Item(.Count).Interior
+            .PatternColorIndex = xlAutomatic
+            .Color = 5296274 ' Green color
+            .TintAndShade = 0
+        End With
+        ' Add conditional format for "N"
+        .Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""N"""
+        With .Item(.Count).Interior
+            .PatternColorIndex = xlAutomatic
+            .Color = 65535 ' Yellow color
+            .TintAndShade = 0
+        End With
     End With
 
     MsgBox "JSON file list generated successfully!", vbInformation
