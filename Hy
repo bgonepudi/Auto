@@ -8,10 +8,11 @@ Sub LoadJSONFiles()
     Dim jsonObject As Object
     Dim key As Variant
     Dim i As Long
-    Dim j As Long
+    Dim ws As Worksheet
 
-    ' Set the folder path
-    folderPath = "C:\path\to\your\json\files\"
+    ' Get the folder path from cell D15
+    folderPath = ThisWorkbook.Sheets("Sheet1").Range("D15").Value
+    If Right(folderPath, 1) <> "\" Then folderPath = folderPath & "\"
 
     ' Create a new sheet
     Sheets.Add(After:=Sheets(Sheets.Count)).Name = "JSON List"
