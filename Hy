@@ -6,6 +6,7 @@ Sub ListJSONFiles()
     Dim i As Long
     Dim ws As Worksheet
     Dim rng As Range
+    Dim table As ListObject
     Dim sheetName As String
 
     sheetName = "JSON Files"
@@ -47,9 +48,14 @@ Sub ListJSONFiles()
         End If
     Next file
 
-    ' Format the "Convert" column
-    Set rng = ws.Range("C2:C" & i - 1)
-    With rng.Validation
+    ' Create a table from the data
+    Set rng = ws.Range("A1:C" & i - 1)
+    Set table = ws.ListObjects.Add(xlSrcRange, rng, , xlYes)
+    table.Name = "JSONFilesTable"
+    table.TableStyle = "TableStyleMedium2"
+
+    ' Format the "Convert" column with data validation
+    With ws.Range("C2:C" & i - 1).Validation
         .Delete ' Remove any existing validation
         .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:= _
             xlBetween, Formula1:="Y,N"
@@ -59,8 +65,8 @@ Sub ListJSONFiles()
         .ShowError = True
     End With
 
-    ' Apply conditional formatting
-    With rng.FormatConditions
+    ' Apply conditional formatting to the "Convert" column
+    With ws.Range("C2:C" & i - 1).FormatConditions
         .Delete ' Remove any existing conditional formatting
         ' Add conditional format for "Y"
         .Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""Y"""
