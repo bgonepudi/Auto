@@ -107,3 +107,11 @@ Sub UpdateYCount()
     ' Display the count on "Sheet1" in cell M15
     ThisWorkbook.Sheets("Sheet1").Range("M15").Value = "Total items with Y: " & countY
 End Sub
+
+Private Sub Worksheet_Change(ByVal Target As Range)
+    ' Check if the change is in the "Convert" column (column C)
+    If Not Intersect(Target, Me.Range("C:C")) Is Nothing Then
+        ' Update the count of "Y" values
+        UpdateYCount
+    End If
+End Sub
