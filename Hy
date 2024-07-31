@@ -1,4 +1,3 @@
-tt
 import json
 import csv
 import re
@@ -20,59 +19,71 @@ except json.JSONDecodeError:
     exit(1)
 
 # Function to flatten JSON and extract key-value pairs
-def extract(obj, parent_key=''):
-    key_values = []
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            full_key = f"{parent_key}.{k}" if parent_key else k
-            key_values.extend(extract(v, full_key))
-    elif isinstance(obj, list):
-        for i, item in enumerate(obj):
-            key_values.extend(extract(item, f"{parent_key}.{i}"))
-    else:
-        key_values.append((parent_key, obj))
-    return key_values
+def flatten_json(y):
+    out = {}
+
+    def flatten(x, name='', parent=None):
+        if isinstance(x, dict):
+            for a in x:
+                flatten(x[a], name + a + '.', parent=x)
+        elif isinstance(x, list):
+            if len(x) == 0:
+                out[name[:-1]] = []
+            else:
+                for i, a in enumerate(x):
+                    flatten(a, name + str(i) + '.', parent=x)
+        else:
+            out[name[:-1]] = x
+
+    flatten(y)
+    return out
 
 # Ensure jsondata is a list
 if isinstance(jsondata, dict):
     jsondata = [jsondata]
 
-# Extract key-value pairs from each JSON entry
-all_key_values = []
+# Flatten each entry in jsondata
+flattened_data = []
 for entry in jsondata:
-    all_key_values.extend(extract(entry))
+    flattened = flatten_json(entry)
+    rows = []
+    for k, v in flattened.items():
+        if isinstance(v, list):
+            if len(v) == 0:
+                rows.append({k: ""})
+            else:
+                for item in v:
+                    row = {k: item}
+                    rows.append(row)
+        else:
+            if len(rows) == 0:
+                rows.append({k: v})
+            else:
+                for row in rows:
+                    row[k] = v
+    for row in rows:
+        flattened_data.append(row)
 
-# Clean headers and prepare data rows
-cleaned_headers = []
-data_rows = []
-
-for key, value in all_key_values:
-    cleaned_key = re.sub(r"\.\d+", "", key)
-    cleaned_headers.append(cleaned_key)
-    data_rows.append(value)
-
-# Ensure headers are unique and maintain order
-unique_cleaned_headers = list(dict.fromkeys(cleaned_headers))
-
-# Group data rows by unique headers
-data_dict = {header: [] for header in unique_cleaned_headers}
-
-for key, value in zip(cleaned_headers, data_rows):
-    data_dict[key].append(value)
-
-# Ensure each list in data_dict has the same length
-max_length = max(len(values) for values in data_dict.values())
-for key in data_dict:
-    while len(data_dict[key]) < max_length:
-        data_dict[key].append("")
+# Ensure each row has all headers, copying previous values if necessary
+unique_headers = sorted(set(key for data in flattened_data for key in data.keys()))
+for row in flattened_data:
+    for header in unique_headers:
+        if header not in row:
+            row[header] = ""
 
 # Write to CSV
 try:
-    with open(output_csv_path, 'w', newline='') as data_file:
-        csv_writer = csv.writer(data_file)
-        csv_writer.writerow(unique_cleaned_headers)
-        for row in zip(*data_dict.values()):
-            csv_writer.writerow(row)
+    with open(output_csv_path, 'w', newline='', encoding='utf-8') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=unique_headers)
+        writer.writeheader()
+        previous_row = {header: "" for header in unique_headers}
+        for row in flattened_data:
+            for header in unique_headers:
+                if row[header] == "":
+                    row[header] = previous_row[header]
+                else:
+                    previous_row[header] = row[header]
+            writer.writerow(row)
     print(f"Data successfully written to {output_csv_path}")
 except IOError:
     print(f"Error writing to file: {output_csv_path}")
