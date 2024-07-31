@@ -32,16 +32,22 @@ Sub ListJSONFiles()
         If fileSystem.GetExtensionName(file.Name) = "json" Then
             ws.Cells(i, 1).Value = file.Name
             ws.Cells(i, 2).Value = file.Path
-            ws.Cells(i, 3).Validation.Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:= _
-                xlBetween, Formula1:="Y,N"
+            ws.Cells(i, 3).Value = "N" ' Default value
             i = i + 1
         End If
     Next file
 
     ' Format the "Convert" column
     Set rng = ws.Range("C2:C" & i - 1)
-    rng.Validation.Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:= _
-        xlBetween, Formula1:="Y,N"
+    With rng.Validation
+        .Delete ' Remove any existing validation
+        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:= _
+            xlBetween, Formula1:="Y,N"
+        .IgnoreBlank = True
+        .InCellDropdown = True
+        .ShowInput = True
+        .ShowError = True
+    End With
 
     MsgBox "JSON file list generated successfully!", vbInformation
 End Sub
