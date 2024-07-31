@@ -84,5 +84,26 @@ Sub ListJSONFiles()
         End With
     End With
 
+    ' Initial count of "Y" values
+    UpdateYCount
+
     MsgBox "JSON file list generated successfully!", vbInformation
+End Sub
+
+Sub UpdateYCount()
+    Dim ws As Worksheet
+    Dim countY As Long
+    Dim lastRow As Long
+
+    ' Set the worksheet
+    Set ws = ThisWorkbook.Sheets("JSON Files")
+
+    ' Get the last row with data in the "Convert" column
+    lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row
+
+    ' Count the number of "Y" in the "Convert" column
+    countY = Application.WorksheetFunction.CountIf(ws.Range("C2:C" & lastRow), "Y")
+
+    ' Display the count on "Sheet1" in cell M15
+    ThisWorkbook.Sheets("Sheet1").Range("M15").Value = "Total items with Y: " & countY
 End Sub
