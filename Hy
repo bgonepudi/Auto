@@ -1,12 +1,8 @@
-Sub LoadJSONFiles()
+Sub ListJSONFiles()
     Dim folderPath As String
     Dim fileSystem As Object
     Dim folder As Object
     Dim file As Object
-    Dim jsonFilePath As String
-    Dim jsonText As String
-    Dim jsonObject As Object
-    Dim key As Variant
     Dim i As Long
     Dim ws As Worksheet
 
@@ -15,13 +11,12 @@ Sub LoadJSONFiles()
     If Right(folderPath, 1) <> "\" Then folderPath = folderPath & "\"
 
     ' Create a new sheet
-    Sheets.Add(After:=Sheets(Sheets.Count)).Name = "JSON List"
-    Set ws = Sheets("JSON List")
+    Sheets.Add(After:=Sheets(Sheets.Count)).Name = "JSON Files"
+    Set ws = Sheets("JSON Files")
 
     ' Set up headers
     ws.Cells(1, 1).Value = "File Name"
-    ws.Cells(1, 2).Value = "JSON Key"
-    ws.Cells(1, 3).Value = "Value"
+    ws.Cells(1, 2).Value = "File Path"
 
     ' Initialize row counter
     i = 2
@@ -30,32 +25,14 @@ Sub LoadJSONFiles()
     Set fileSystem = CreateObject("Scripting.FileSystemObject")
     Set folder = fileSystem.GetFolder(folderPath)
 
-    ' Loop through each JSON file in the folder
+    ' Loop through each file in the folder
     For Each file In folder.Files
         If fileSystem.GetExtensionName(file.Name) = "json" Then
-            jsonFilePath = folderPath & file.Name
-            jsonText = ReadTextFile(jsonFilePath)
-            Set jsonObject = JsonConverter.ParseJson(jsonText)
-
-            ' Loop through each key in the JSON object
-            For Each key In jsonObject.Keys
-                ws.Cells(i, 1).Value = file.Name
-                ws.Cells(i, 2).Value = key
-                ws.Cells(i, 3).Value = jsonObject(key)
-                i = i + 1
-            Next key
+            ws.Cells(i, 1).Value = file.Name
+            ws.Cells(i, 2).Value = file.Path
+            i = i + 1
         End If
     Next file
 
-    MsgBox "JSON files loaded successfully!", vbInformation
+    MsgBox "JSON file list generated successfully!", vbInformation
 End Sub
-
-Function ReadTextFile(filePath As String) As String
-    Dim fileSystem As Object
-    Dim textStream As Object
-    Set fileSystem = CreateObject("Scripting.FileSystemObject")
-    Set textStream = fileSystem.OpenTextFile(filePath, 1)
-
-    ReadTextFile = textStream.ReadAll
-    textStream.Close
-End Function
