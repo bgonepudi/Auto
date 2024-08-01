@@ -20,8 +20,17 @@ Private Sub UpdateYCount()
     
     ' Update the display or a specific cell with the count
     ws.Range("B2").Value = "Total items with Y: " & countY ' Adjust the cell reference as needed
+
+    ' Auto size the columns
+    ws.Columns("A:C").AutoFit
+    
+    ' Update the shape text
+    Dim shp As Shape
+    For Each shp In ws.Shapes
+        If shp.Type = msoTextBox Then
+            If InStr(1, shp.TextFrame.Characters.Text, "Total items with Y", vbTextCompare) > 0 Then
+                shp.TextFrame.Characters.Text = "Total items with Y: " & countY
+            End If
+        End If
+    Next shp
 End Sub
-
-
-##########################3
-
