@@ -1,117 +1,27 @@
-Sub ListJSONFiles()
-    Dim folderPath As String
-    Dim fileSystem As Object
-    Dim folder As Object
-    Dim file As Object
-    Dim i As Long
-    Dim ws As Worksheet
-    Dim rng As Range
-    Dim table As ListObject
-    Dim sheetName As String
-
-    sheetName = "JSON Files"
-
-    ' Delete the sheet if it already exists
-    On Error Resume Next
-    Application.DisplayAlerts = False
-    Sheets(sheetName).Delete
-    Application.DisplayAlerts = True
-    On Error GoTo 0
-
-    ' Get the folder path from cell D15
-    folderPath = ThisWorkbook.Sheets("Sheet1").Range("D15").Value
-    If Right(folderPath, 1) <> "\" Then folderPath = folderPath & "\"
-
-    ' Create a new sheet
-    Sheets.Add(After:=Sheets(Sheets.Count)).Name = sheetName
-    Set ws = Sheets(sheetName)
-
-    ' Set up headers
-    ws.Cells(1, 1).Value = "File Name"
-    ws.Cells(1, 2).Value = "File Path"
-    ws.Cells(1, 3).Value = "Convert"
-
-    ' Initialize row counter
-    i = 2
-
-    ' Set up file system object
-    Set fileSystem = CreateObject("Scripting.FileSystemObject")
-    Set folder = fileSystem.GetFolder(folderPath)
-
-    ' Loop through each file in the folder
-    For Each file In folder.Files
-        If fileSystem.GetExtensionName(file.Name) = "json" Then
-            ws.Cells(i, 1).Value = file.Name
-            ws.Cells(i, 2).Value = file.Path
-            ws.Cells(i, 3).Value = "N" ' Default value
-            i = i + 1
-        End If
-    Next file
-
-    ' Create a table from the data
-    Set rng = ws.Range("A1:C" & i - 1)
-    Set table = ws.ListObjects.Add(xlSrcRange, rng, , xlYes)
-    table.Name = "JSONFilesTable"
-    table.TableStyle = "TableStyleMedium2"
-
-    ' Format the "Convert" column with data validation
-    With ws.Range("C2:C" & i - 1).Validation
-        .Delete ' Remove any existing validation
-        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertStop, Operator:= _
-            xlBetween, Formula1:="Y,N"
-        .IgnoreBlank = True
-        .InCellDropdown = True
-        .ShowInput = True
-        .ShowError = True
-    End With
-
-    ' Apply conditional formatting to the "Convert" column
-    With ws.Range("C2:C" & i - 1).FormatConditions
-        .Delete ' Remove any existing conditional formatting
-        ' Add conditional format for "Y"
-        .Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""Y"""
-        With .Item(.Count).Interior
-            .PatternColorIndex = xlAutomatic
-            .Color = 5296274 ' Green color
-            .TintAndShade = 0
-        End With
-        ' Add conditional format for "N"
-        .Add Type:=xlCellValue, Operator:=xlEqual, Formula1:="=""N"""
-        With .Item(.Count).Interior
-            .PatternColorIndex = xlAutomatic
-            .Color = 65535 ' Yellow color
-            .TintAndShade = 0
-        End With
-    End With
-
-    ' Initial count of "Y" values
-    UpdateYCount
-
-    MsgBox "JSON file list generated successfully!", vbInformation
-End Sub
-
-Sub UpdateYCount()
-    Dim ws As Worksheet
-    Dim countY As Long
-    Dim lastRow As Long
-
-    ' Set the worksheet
-    Set ws = ThisWorkbook.Sheets("JSON Files")
-
-    ' Get the last row with data in the "Convert" column
-    lastRow = ws.Cells(ws.Rows.Count, "C").End(xlUp).Row
-
-    ' Count the number of "Y" in the "Convert" column
-    countY = Application.WorksheetFunction.CountIf(ws.Range("C2:C" & lastRow), "Y")
-
-    ' Display the count on "Sheet1" in cell M15
-    ThisWorkbook.Sheets("Sheet1").Range("M15").Value = "Total items with Y: " & countY
-End Sub
-
 Private Sub Worksheet_Change(ByVal Target As Range)
-    ' Check if the change is in the "Convert" column (column C)
     If Not Intersect(Target, Me.Range("C:C")) Is Nothing Then
-        ' Update the count of "Y" values
         UpdateYCount
     End If
 End Sub
+
+Private Sub UpdateYCount()
+    Dim ws As Worksheet
+    Dim cell As Range
+    Dim countY As Long
+    
+    Set ws = ThisWorkbook.Sheets("JSON Files") ' Ensure this matches your sheet name
+    
+    countY = 0
+    For Each cell In ws.Range("C2:C" & ws.Cells(ws.Rows.Count, "C").End(xlUp).Row)
+        If cell.Value = "Y" Then
+            countY = countY + 1
+        End If
+    Next cell
+    
+    ' Update the display or a specific cell with the count
+    ws.Range("B2").Value = "Total items with Y: " & countY ' Adjust the cell reference as needed
+End Sub
+
+
+##########################3
+
