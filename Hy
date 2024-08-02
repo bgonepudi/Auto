@@ -21,13 +21,19 @@ if (Test-Path -Path $jsonPath) {
             foreach ($item in $parsedJson) {
                 # Output the entire item for detailed inspection
                 Write-Host "Item: $($item | Format-List -Property *)"
-                
-                # Access specific properties
-                if ($item.PSObject.Properties["Property1"] -and $item.PSObject.Properties["Property2"]) {
-                    Write-Host "Property1: $($item.Property1), Property2: $($item.Property2)"
-                } else {
-                    Write-Host "Properties 'Property1' and/or 'Property2' not found in the item."
+
+                # List all properties of the item
+                $item.PSObject.Properties | ForEach-Object {
+                    Write-Host "Property Name: $($_.Name) - Value: $($_.Value)"
                 }
+
+                # Access specific properties (change Property1 and Property2 to actual property names)
+                # Uncomment the following lines once you identify the correct property names
+                # if ($item.PSObject.Properties["Property1"] -and $item.PSObject.Properties["Property2"]) {
+                #     Write-Host "Property1: $($item.Property1), Property2: $($item.Property2)"
+                # } else {
+                #     Write-Host "Properties 'Property1' and/or 'Property2' not found in the item."
+                # }
             }
         } else {
             Write-Host "Parsed JSON is not an array."
