@@ -1,87 +1,21 @@
-# Load the necessary assembly for SQL Server
-Add-Type -AssemblyName "System.Data"
-
-# Function to run SQL query and return results as a DataTable
-function Run-SqlQuery {
-    param (
-        [string]$connectionString,
-        [string]$query
-    )
-
-    $connection = New-Object System.Data.SqlClient.SqlConnection
-    $connection.ConnectionString = $connectionString
-    $command = $connection.CreateCommand()
-    $command.CommandText = $query
-
-    $adapter = New-Object System.Data.SqlClient.SqlDataAdapter $command
-    $dataTable = New-Object System.Data.DataTable
-    $adapter.Fill($dataTable) | Out-Null
-
-    return $dataTable
-}
-
-# Function to convert DataTable to HTML
-function Convert-DataTableToHTML {
-    param (
-        [System.Data.DataTable]$dataTable
-    )
-
-    $html = "<table border='1'><tr>"
-
-    foreach ($col in $dataTable.Columns) {
-        $html += "<th>$col</th>"
-    }
-    $html += "</tr>"
-
-    foreach ($row in $dataTable.Rows) {
-        $html += "<tr>"
-        foreach ($item in $row.ItemArray) {
-            $html += "<td>$item</td>"
-        }
-        $html += "</tr>"
-    }
-    $html += "</table>"
-
-    return $html
-}
-
-# Database connection details
-$server = "your_server"
-$database = "your_database"
-$username = "your_username"
-$password = "your_password"
-$connectionString = "Server=$server;Database=$database;User Id=$username;Password=$password;"
-
-# Define the queries for current, previous, and previous-to-previous weeks
-$queryCurrentWeek = "SELECT * FROM your_table WHERE your_date_column BETWEEN DATEADD(WEEK, -1, GETDATE()) AND GETDATE()"
-$queryPreviousWeek = "SELECT * FROM your_table WHERE your_date_column BETWEEN DATEADD(WEEK, -2, GETDATE()) AND DATEADD(WEEK, -1, GETDATE())"
-$queryPrevToPrevWeek = "SELECT * FROM your_table WHERE your_date_column BETWEEN DATEADD(WEEK, -3, GETDATE()) AND DATEADD(WEEK, -2, GETDATE())"
-
-# Execute the queries
-$dataCurrentWeek = Run-SqlQuery -connectionString $connectionString -query $queryCurrentWeek
-$dataPreviousWeek = Run-SqlQuery -connectionString $connectionString -query $queryPreviousWeek
-$dataPrevToPrevWeek = Run-SqlQuery -connectionString $connectionString -query $queryPrevToPrevWeek
-
-# Compare data (simple example, modify as needed)
-$comparisonCurrentVsPrevious = Compare-Object -ReferenceObject $dataPreviousWeek -DifferenceObject $dataCurrentWeek
-$comparisonPreviousVsPrevToPrev = Compare-Object -ReferenceObject $dataPrevToPrevWeek -DifferenceObject $dataPreviousWeek
-
-# Convert comparison results to HTML
-$comparisonHTMLCurrentVsPrevious = Convert-DataTableToHTML -dataTable $comparisonCurrentVsPrevious
-$comparisonHTMLPreviousVsPrevToPrev = Convert-DataTableToHTML -dataTable $comparisonPreviousVsPrevToPrev
-
-# Combine the HTML tables
-$combinedHTML = "<h2>Comparison Current Week vs Previous Week</h2>$comparisonHTMLCurrentVsPrevious"
-$combinedHTML += "<h2>Comparison Previous Week vs Previous-to-Previous Week</h2>$comparisonHTMLPreviousVsPrevToPrev"
-
-# Email details
-$smtpServer = "smtp.example.com"
-$smtpFrom = "your_email@example.com"
-$smtpTo = "receiver_email@example.com"
-$subject = "Weekly Data Comparison"
-$body = $combinedHTML
-
-# Send the email
-Send-MailMessage -SmtpServer $smtpServer -From $smtpFrom -To $smtpTo -Subject $subject -Body $body -BodyAsHtml -Credential (Get-Credential)
-
-Write-Output "Email sent successfully!"
+WITH WeeklyCounts AS (
+    SELECT 
+        ck, 
+        COUNT(*) AS TotalCount,
+        SUM(CASE WHEN DATEPART(WEEK, GETDATE()) = DATEPART(WEEK, YourDateField) AND DATEPART(YEAR, GETDATE()) = DATEPART(YEAR, YourDateField) THEN 1 ELSE 0 END) AS CurrentWeekCount,
+        SUM(CASE WHEN DATEPART(WEEK, GETDATE()) - 1 = DATEPART(WEEK, YourDateField) AND DATEPART(YEAR, GETDATE()) = DATEPART(YEAR, YourDateField) THEN 1 ELSE 0 END) AS PreviousWeekCount
+    FROM 
+        table
+    WHERE 
+        CK IN (11,77) 
+    GROUP BY 
+        CK
+)
+SELECT 
+    CK,
+    CurrentWeekCount,
+    PreviousWeekCount
+FROM 
+    WeeklyCounts
+ORDER BY 
+    CK;
