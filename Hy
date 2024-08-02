@@ -1,17 +1,32 @@
 # Specify the path to the JSON file
 $jsonPath = "C:\path\to\your\output.json"
 
-# Read the JSON file content
-$jsonContent = Get-Content -Path $jsonPath -Raw
+# Check if the file exists
+if (Test-Path -Path $jsonPath) {
+    try {
+        # Read the JSON file content
+        $jsonContent = Get-Content -Path $jsonPath -Raw
+        Write-Host "JSON content successfully read from file."
 
-# Convert the JSON content to a PowerShell object
-$parsedJson = $jsonContent | ConvertFrom-Json
+        # Convert the JSON content to a PowerShell object
+        $parsedJson = $jsonContent | ConvertFrom-Json
+        Write-Host "JSON content successfully parsed."
 
-# Output the parsed JSON content
-$parsedJson
+        # Output the parsed JSON content
+        $parsedJson | Format-List -Property *
 
-# To access specific properties in the JSON object, you can use dot notation
-# For example, if the JSON contains an array of objects, you can iterate over it
-foreach ($item in $parsedJson) {
-    Write-Host "Property1: $($item.Property1), Property2: $($item.Property2)"
+        # To access specific properties in the JSON object, you can use dot notation
+        # For example, if the JSON contains an array of objects, you can iterate over it
+        if ($parsedJson -is [System.Collections.IEnumerable]) {
+            foreach ($item in $parsedJson) {
+                Write-Host "Property1: $($item.Property1), Property2: $($item.Property2)"
+            }
+        } else {
+            Write-Host "Parsed JSON is not an array."
+        }
+    } catch {
+        Write-Error "Failed to parse JSON content: $_"
+    }
+} else {
+    Write-Error "JSON file not found at path: $jsonPath"
 }
