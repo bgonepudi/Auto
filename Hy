@@ -1,20 +1,17 @@
-# Import the ImportExcel module
-Import-Module ImportExcel
-
-# Specify the path to the Excel file and the sheet name
-$excelPath = "C:\path\to\your\example.xlsx"
-$sheetName = "Sheet1"
-
-# Import the Excel sheet into a PowerShell object
-$excelData = Import-Excel -Path $excelPath -WorksheetName $sheetName
-
-# Convert the PowerShell object to JSON format
-$jsonOutput = $excelData | ConvertTo-Json -Depth 10
-
-# Specify the output path for the JSON file
+# Specify the path to the JSON file
 $jsonPath = "C:\path\to\your\output.json"
 
-# Save the JSON output to a file
-$jsonOutput | Out-File -FilePath $jsonPath -Encoding utf8
+# Read the JSON file content
+$jsonContent = Get-Content -Path $jsonPath -Raw
 
-Write-Host "Excel file has been converted to JSON successfully."
+# Convert the JSON content to a PowerShell object
+$parsedJson = $jsonContent | ConvertFrom-Json
+
+# Output the parsed JSON content
+$parsedJson
+
+# To access specific properties in the JSON object, you can use dot notation
+# For example, if the JSON contains an array of objects, you can iterate over it
+foreach ($item in $parsedJson) {
+    Write-Host "Property1: $($item.Property1), Property2: $($item.Property2)"
+}
