@@ -1,21 +1,4 @@
-WITH WeeklyCounts AS (
-    SELECT 
-        ck, 
-        COUNT(*) AS TotalCount,
-        SUM(CASE WHEN DATEPART(WEEK, GETDATE()) = DATEPART(WEEK, YourDateField) AND DATEPART(YEAR, GETDATE()) = DATEPART(YEAR, YourDateField) THEN 1 ELSE 0 END) AS CurrentWeekCount,
-        SUM(CASE WHEN DATEPART(WEEK, GETDATE()) - 1 = DATEPART(WEEK, YourDateField) AND DATEPART(YEAR, GETDATE()) = DATEPART(YEAR, YourDateField) THEN 1 ELSE 0 END) AS PreviousWeekCount
-    FROM 
-        table
-    WHERE 
-        CK IN (11,77) 
-    GROUP BY 
-        CK
-)
-SELECT 
-    CK,
-    CurrentWeekCount,
-    PreviousWeekCount
-FROM 
-    WeeklyCounts
-ORDER BY 
-    CK;
+
+    COUNT(CASE WHEN date_column >= DATE_TRUNC('month', CURRENT_DATE) THEN 1 ELSE NULL END) AS "Current_Month_Count",
+    COUNT(CASE WHEN date_column >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') 
+               AND date_column < DATE_TRUNC('month', CURRENT_DATE) THEN 1 ELSE NULL END) AS "Previous_Month_Count"
