@@ -12,14 +12,22 @@ if (Test-Path -Path $jsonPath) {
         $parsedJson = $jsonContent | ConvertFrom-Json
         Write-Host "JSON content successfully parsed."
 
-        # Output the parsed JSON content
+        # Output the parsed JSON content for inspection
         $parsedJson | Format-List -Property *
 
         # To access specific properties in the JSON object, you can use dot notation
         # For example, if the JSON contains an array of objects, you can iterate over it
         if ($parsedJson -is [System.Collections.IEnumerable]) {
             foreach ($item in $parsedJson) {
-                Write-Host "Property1: $($item.Property1), Property2: $($item.Property2)"
+                # Output the entire item for detailed inspection
+                Write-Host "Item: $($item | Format-List -Property *)"
+                
+                # Access specific properties
+                if ($item.PSObject.Properties["Property1"] -and $item.PSObject.Properties["Property2"]) {
+                    Write-Host "Property1: $($item.Property1), Property2: $($item.Property2)"
+                } else {
+                    Write-Host "Properties 'Property1' and/or 'Property2' not found in the item."
+                }
             }
         } else {
             Write-Host "Parsed JSON is not an array."
