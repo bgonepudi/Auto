@@ -1,46 +1,67 @@
-# Specify the path to the JSON file
-$jsonPath = "C:\path\to\your\output.json"
+-- Display the formatted date ranges
+SELECT 
+    CONVERT(VARCHAR, DATEADD(DAY, -7, GETDATE()), 101) AS Date_Seven_Days_Ago,
+    CONVERT(VARCHAR, GETDATE(), 101) AS Current_Date,
+    CONVERT(VARCHAR, DATEADD(DAY, -14, GETDATE()), 101) AS Date_Fourteen_Days_Ago,
+    CONVERT(VARCHAR, DATEADD(DAY, -21, GETDATE()), 101) AS Date_TwentyOne_Days_Ago;
 
-# Check if the file exists
-if (Test-Path -Path $jsonPath) {
-    try {
-        # Read the JSON file content
-        $jsonContent = Get-Content -Path $jsonPath -Raw
-        Write-Host "JSON content successfully read from file."
+-- Combined query
+SELECT 
+    SBSB.GRGR_CK, 
+    COUNT(1) AS "UAT_REG 1 Membership",
+    'Current Week' AS Week,
+    CONVERT(VARCHAR, DATEADD(DAY, -7, GETDATE()), 101) AS Start_Date,
+    CONVERT(VARCHAR, GETDATE(), 101) AS End_Date
+FROM 
+    FACETS.audit.CMC_MEME_MEMBER MEME
+INNER JOIN 
+    FACETS.CMC_SBSB_SUBSC SBSB 
+    ON SBSB.SBSB_CK = MEME.SBSB_CK
+WHERE 
+    HIST_CREATE_DTM BETWEEN DATEADD(DAY, -7, GETDATE()) AND GETDATE()
+    AND MEME.GRGR_CK IN (1,2,4,15,16,24,25,26)
+    AND HIST_LOG_ACT_CD = 'I'
+GROUP BY 
+    SBSB.GRGR_CK
 
-        # Convert the JSON content to a PowerShell object
-        $parsedJson = $jsonContent | ConvertFrom-Json
-        Write-Host "JSON content successfully parsed."
+UNION ALL
 
-        # Output the parsed JSON content for inspection
-        $parsedJson | Format-List -Property *
+SELECT 
+    SBSB.GRGR_CK, 
+    COUNT(1) AS "UAT_REG 1 Membership",
+    'Previous Week' AS Week,
+    CONVERT(VARCHAR, DATEADD(DAY, -14, GETDATE()), 101) AS Start_Date,
+    CONVERT(VARCHAR, DATEADD(DAY, -7, GETDATE()), 101) AS End_Date
+FROM 
+    FACETS.audit.CMC_MEME_MEMBER MEME
+INNER JOIN 
+    FACETS.CMC_SBSB_SUBSC SBSB 
+    ON SBSB.SBSB_CK = MEME.SBSB_CK
+WHERE 
+    HIST_CREATE_DTM BETWEEN DATEADD(DAY, -14, GETDATE()) AND DATEADD(DAY, -7, GETDATE())
+    AND MEME.GRGR_CK IN (1,2,4,15,16,24,25,26)
+    AND HIST_LOG_ACT_CD = 'I'
+GROUP BY 
+    SBSB.GRGR_CK
 
-        # To access specific properties in the JSON object, you can use dot notation
-        # For example, if the JSON contains an array of objects, you can iterate over it
-        if ($parsedJson -is [System.Collections.IEnumerable]) {
-            foreach ($item in $parsedJson) {
-                # Output the entire item for detailed inspection
-                Write-Host "Item: $($item | Format-List -Property *)"
+UNION ALL
 
-                # List all properties of the item
-                $item.PSObject.Properties | ForEach-Object {
-                    Write-Host "Property Name: $($_.Name) - Value: $($_.Value)"
-                }
-
-                # Access specific properties (change Property1 and Property2 to actual property names)
-                # Uncomment the following lines once you identify the correct property names
-                # if ($item.PSObject.Properties["Property1"] -and $item.PSObject.Properties["Property2"]) {
-                #     Write-Host "Property1: $($item.Property1), Property2: $($item.Property2)"
-                # } else {
-                #     Write-Host "Properties 'Property1' and/or 'Property2' not found in the item."
-                # }
-            }
-        } else {
-            Write-Host "Parsed JSON is not an array."
-        }
-    } catch {
-        Write-Error "Failed to parse JSON content: $_"
-    }
-} else {
-    Write-Error "JSON file not found at path: $jsonPath"
-}
+SELECT 
+    SBSB.GRGR_CK, 
+    COUNT(1) AS "UAT_REG 1 Membership",
+    'Week Before Previous' AS Week,
+    CONVERT(VARCHAR, DATEADD(DAY, -21, GETDATE()), 101) AS Start_Date,
+    CONVERT(VARCHAR, DATEADD(DAY, -14, GETDATE()), 101) AS End_Date
+FROM 
+    FACETS.audit.CMC_MEME_MEMBER MEME
+INNER JOIN 
+    FACETS.CMC_SBSB_SUBSC SBSB 
+    ON SBSB.SBSB_CK = MEME.SBSB_CK
+WHERE 
+    HIST_CREATE_DTM BETWEEN DATEADD(DAY, -21, GETDATE()) AND DATEADD(DAY, -14, GETDATE())
+    AND MEME.GRGR_CK IN (1,2,4,15,16,24,25,26)
+    AND HIST_LOG_ACT_CD = 'I'
+GROUP BY 
+    SBSB.GRGR_CK
+ORDER BY 
+    Week, SBSB.GRGR_CK;
