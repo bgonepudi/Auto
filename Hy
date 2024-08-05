@@ -1,11 +1,3 @@
--- Display the formatted date ranges
-SELECT 
-    CONVERT(VARCHAR, DATEADD(DAY, -7, GETDATE()), 101) AS Date_Seven_Days_Ago,
-    CONVERT(VARCHAR, GETDATE(), 101) AS Current_Date,
-    CONVERT(VARCHAR, DATEADD(DAY, -14, GETDATE()), 101) AS Date_Fourteen_Days_Ago,
-    CONVERT(VARCHAR, DATEADD(DAY, -21, GETDATE()), 101) AS Date_TwentyOne_Days_Ago;
-
--- Combined query
 SELECT 
     SBSB.GRGR_CK, 
     COUNT(1) AS "UAT_REG 1 Membership",
