@@ -1,6 +1,11 @@
+-- Verify table existence
+SELECT TOP 1 * FROM FACETS.audit.CMC_MEME_MEMBER;
+SELECT TOP 1 * FROM FACETS.CMC_SBSB_SUBSC;
+
+-- Main query
 SELECT 
     SBSB.GRGR_CK, 
-    COUNT(1) AS "UAT_REG 1 Membership",
+    COUNT(1) AS UAT_REG_1_Membership,
     'Current Week' AS Week,
     CONVERT(VARCHAR, DATEADD(DAY, -7, GETDATE()), 101) AS Start_Date,
     CONVERT(VARCHAR, GETDATE(), 101) AS End_Date
@@ -20,7 +25,7 @@ UNION ALL
 
 SELECT 
     SBSB.GRGR_CK, 
-    COUNT(1) AS "UAT_REG 1 Membership",
+    COUNT(1) AS UAT_REG_1_Membership,
     'Previous Week' AS Week,
     CONVERT(VARCHAR, DATEADD(DAY, -14, GETDATE()), 101) AS Start_Date,
     CONVERT(VARCHAR, DATEADD(DAY, -7, GETDATE()), 101) AS End_Date
@@ -40,7 +45,7 @@ UNION ALL
 
 SELECT 
     SBSB.GRGR_CK, 
-    COUNT(1) AS "UAT_REG 1 Membership",
+    COUNT(1) AS UAT_REG_1_Membership,
     'Week Before Previous' AS Week,
     CONVERT(VARCHAR, DATEADD(DAY, -21, GETDATE()), 101) AS Start_Date,
     CONVERT(VARCHAR, DATEADD(DAY, -14, GETDATE()), 101) AS End_Date
