@@ -1,64 +1,29 @@
--- Verify table existence
-SELECT TOP 1 * FROM FACETS.audit.CMC_MEME_MEMBER;
-SELECT TOP 1 * FROM FACETS.CMC_SBSB_SUBSC;
+# Define the input CSV file and the output XML file
+$csvFile = "C:\path\to\your\file.csv"
+$xmlFile = "C:\path\to\your\output.xml"
 
--- Main query
-SELECT 
-    SBSB.GRGR_CK, 
-    COUNT(1) AS UAT_REG_1_Membership,
-    'Current Week' AS Week,
-    CONVERT(VARCHAR, DATEADD(DAY, -7, GETDATE()), 101) AS Start_Date,
-    CONVERT(VARCHAR, GETDATE(), 101) AS End_Date
-FROM 
-    FACETS.audit.CMC_MEME_MEMBER MEME
-INNER JOIN 
-    FACETS.CMC_SBSB_SUBSC SBSB 
-    ON SBSB.SBSB_CK = MEME.SBSB_CK
-WHERE 
-    HIST_CREATE_DTM BETWEEN DATEADD(DAY, -7, GETDATE()) AND GETDATE()
-    AND MEME.GRGR_CK IN (1,2,4,15,16,24,25,26)
-    AND HIST_LOG_ACT_CD = 'I'
-GROUP BY 
-    SBSB.GRGR_CK
+# Read the CSV file into a variable
+$csvData = Import-Csv -Path $csvFile
 
-UNION ALL
+# Create a new XML document
+$xmlDoc = New-Object System.Xml.XmlDocument
+$root = $xmlDoc.CreateElement("Root")
+$xmlDoc.AppendChild($root)
 
-SELECT 
-    SBSB.GRGR_CK, 
-    COUNT(1) AS UAT_REG_1_Membership,
-    'Previous Week' AS Week,
-    CONVERT(VARCHAR, DATEADD(DAY, -14, GETDATE()), 101) AS Start_Date,
-    CONVERT(VARCHAR, DATEADD(DAY, -7, GETDATE()), 101) AS End_Date
-FROM 
-    FACETS.audit.CMC_MEME_MEMBER MEME
-INNER JOIN 
-    FACETS.CMC_SBSB_SUBSC SBSB 
-    ON SBSB.SBSB_CK = MEME.SBSB_CK
-WHERE 
-    HIST_CREATE_DTM BETWEEN DATEADD(DAY, -14, GETDATE()) AND DATEADD(DAY, -7, GETDATE())
-    AND MEME.GRGR_CK IN (1,2,4,15,16,24,25,26)
-    AND HIST_LOG_ACT_CD = 'I'
-GROUP BY 
-    SBSB.GRGR_CK
+# Loop through each row in the CSV data
+foreach ($row in $csvData) {
+    $item = $xmlDoc.CreateElement("Item")
+    foreach ($column in $row.PSObject.Properties) {
+        if ($column.Name -ne "Column1") {
+            $element = $xmlDoc.CreateElement($column.Name)
+            $element.InnerText = $column.Value
+            $item.AppendChild($element)
+        }
+    }
+    $root.AppendChild($item)
+}
 
-UNION ALL
+# Save the XML document to a file
+$xmlDoc.Save($xmlFile)
 
-SELECT 
-    SBSB.GRGR_CK, 
-    COUNT(1) AS UAT_REG_1_Membership,
-    'Week Before Previous' AS Week,
-    CONVERT(VARCHAR, DATEADD(DAY, -21, GETDATE()), 101) AS Start_Date,
-    CONVERT(VARCHAR, DATEADD(DAY, -14, GETDATE()), 101) AS End_Date
-FROM 
-    FACETS.audit.CMC_MEME_MEMBER MEME
-INNER JOIN 
-    FACETS.CMC_SBSB_SUBSC SBSB 
-    ON SBSB.SBSB_CK = MEME.SBSB_CK
-WHERE 
-    HIST_CREATE_DTM BETWEEN DATEADD(DAY, -21, GETDATE()) AND DATEADD(DAY, -14, GETDATE())
-    AND MEME.GRGR_CK IN (1,2,4,15,16,24,25,26)
-    AND HIST_LOG_ACT_CD = 'I'
-GROUP BY 
-    SBSB.GRGR_CK
-ORDER BY 
-    Week, SBSB.GRGR_CK;
+Write-Host "XML file has been created at $xmlFile"
