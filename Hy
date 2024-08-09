@@ -1,29 +1,17 @@
-# Define the input CSV file and the output XML file
+# Define the input CSV file and the output JSON file
 $csvFile = "C:\path\to\your\file.csv"
-$xmlFile = "C:\path\to\your\output.xml"
+$jsonFile = "C:\path\to\your\output.json"
 
 # Read the CSV file into a variable
 $csvData = Import-Csv -Path $csvFile
 
-# Create a new XML document
-$xmlDoc = New-Object System.Xml.XmlDocument
-$root = $xmlDoc.CreateElement("Root")
-$xmlDoc.AppendChild($root)
+# Remove 'Column1' from the data
+$filteredData = $csvData | Select-Object -Property * -ExcludeProperty Column1
 
-# Loop through each row in the CSV data
-foreach ($row in $csvData) {
-    $item = $xmlDoc.CreateElement("Item")
-    foreach ($column in $row.PSObject.Properties) {
-        if ($column.Name -ne "Column1") {
-            $element = $xmlDoc.CreateElement($column.Name)
-            $element.InnerText = $column.Value
-            $item.AppendChild($element)
-        }
-    }
-    $root.AppendChild($item)
-}
+# Convert the filtered data to JSON
+$jsonData = $filteredData | ConvertTo-Json -Depth 3
 
-# Save the XML document to a file
-$xmlDoc.Save($xmlFile)
+# Save the JSON data to a file
+Set-Content -Path $jsonFile -Value $jsonData
 
-Write-Host "XML file has been created at $xmlFile"
+Write-Host "JSON file has been created at $jsonFile"
