@@ -1,17 +1,171 @@
-# Define the input CSV file and the output JSON file
-$csvFile = "C:\path\to\your\file.csv"
-$jsonFile = "C:\path\to\your\output.json"
+# Load the SQL Server module
+Import-Module SqlServer
 
-# Read the CSV file into a variable
-$csvData = Import-Csv -Path $csvFile
+# Database connection parameters
+$serverName = "your_server_name"
+$databaseName = "FACETS"
 
-# Remove 'Column1' from the data
-$filteredData = $csvData | Select-Object -Property * -ExcludeProperty Column1
+# SQL query to retrieve the SBID
+$query = @"
+SELECT TOP 1
+    dbo.CMC_SBSB_SUBSC.GRGR_CK,
+    dbo.CMC_SBSB_SUBSC.SBSB_ID
+FROM
+    dbo.CMC_SBSB_SUBSC
+WHERE
+    dbo.CMC_SBSB_SUBSC.GRGR_CK = 4
+"@
 
-# Convert the filtered data to JSON
-$jsonData = $filteredData | ConvertTo-Json -Depth 3
+# Execute the SQL query
+$sbid = Invoke-Sqlcmd -ServerInstance $serverName -Database $databaseName -Query $query
 
-# Save the JSON data to a file
-Set-Content -Path $jsonFile -Value $jsonData
+# Simulate keypress function
+function Send-Keys {
+    param (
+        [string]$keys
+    )
+    Add-Type -AssemblyName 'System.Windows.Forms'
+    [System.Windows.Forms.SendKeys]::SendWait($keys)
+}
 
-Write-Host "JSON file has been created at $jsonFile"
+# Section Navigation: Simulate the required keypresses for each section
+
+# Subscriber Section
+Send-Keys "{TAB}"
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Member Section
+for ($i = 0; $i -lt 3; $i++) { Send-Keys "{TAB}" }
+for ($i = 0; $i -lt 34; $i++) { Send-Keys "{RIGHT}" }
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Address Section
+Send-Keys "{TAB}"
+Send-Keys "{ENTER}"
+for ($i = 0; $i -lt 16; $i++) { Send-Keys "{TAB}" }
+Send-Keys "{ENTER}"
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Subgroups Section
+Send-Keys "{TAB}"
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Employment Section
+Send-Keys "{TAB}"
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Class Section
+Send-Keys "{TAB}"
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Eligibility Section
+Send-Keys "{TAB}"
+Send-Keys "{ENTER}"
+for ($i = 0; $i -lt 8; $i++) { Send-Keys "{TAB}" }
+Send-Keys "{ENTER}"
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Eligibility Inquiry Section
+Send-Keys "{TAB}"
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# FSA Accum Section
+for ($i = 0; $i -lt 2; $i++) { Send-Keys "{TAB}" }
+for ($i = 0; $i -lt 10; $i++) { Send-Keys "{RIGHT}" }
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# HRA Accum Section
+Send-Keys "{TAB}"
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Rate Data Section
+Send-Keys "{TAB}"
+Send-Keys "{ENTER}"
+for ($i = 0; $i -lt 8; $i++) { Send-Keys "{TAB}" }
+Send-Keys "{ENTER}"
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Rating/Premium Overrides Section
+for ($i = 0; $i -lt 6; $i++) { Send-Keys "{TAB}" }
+for ($i = 0; $i -lt 1; $i++) { Send-Keys "{RIGHT}" }
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Expanded Split Billing Section
+for ($i = 0; $i -lt 7; $i++) { Send-Keys "{TAB}" }
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Payment Info Section
+for ($i = 0; $i -lt 6; $i++) { Send-Keys "{TAB}" }
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Auto Actions Section
+Send-Keys "{TAB}"
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Fam. Accum. Ptr Section
+for ($i = 0; $i -lt 3; $i++) { Send-Keys "{TAB}" }
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# HAS Account Section
+Send-Keys "{TAB}"
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Debit Card Section
+Send-Keys "{TAB}"
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# User Warning Messages Section
+for ($i = 0; $i -lt 4; $i++) { Send-Keys "{TAB}" }
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# EE Contribution Section
+for ($i = 0; $i -lt 6; $i++) { Send-Keys "{TAB}" }
+Send-Keys "{F12}"
+Send-Keys "{DOWN}"
+
+# Alt Payee Section
+Send-Keys "{TAB}"
+Send-Keys "{F12}"
+
+# Audit Information under Transfer Menu
+Send-Keys "%T"  # Alt+T
+for ($i = 0; $i -lt 2; $i++) { Send-Keys "{DOWN}" }
+Send-Keys "{ENTER}"
+for ($i = 0; $i -lt 5; $i++) { Send-Keys "{TAB}" }
+Send-Keys "%F"  # Alt+F
+for ($i = 0; $i -lt 2; $i++) { Send-Keys "{DOWN}" }
+Send-Keys "{ENTER}"
+
+# Member Restrictions under Transfer Menu
+Send-Keys "%T"  # Alt+T
+for ($i = 0; $i -lt 20; $i++) { Send-Keys "{DOWN}" }
+Send-Keys "{ENTER}"
+for ($i = 0; $i -lt 2; $i++) { Send-Keys "{TAB}" }
+Send-Keys "{RIGHT}"
+for ($i = 0; $i -lt 2; $i++) { Send-Keys "{TAB}" }
+Send-Keys "{ENTER}"
+
+# Close Facets Front End Applications
+Send-Keys "%X"  # Alt+X
+Send-Keys "{DOWN}"
+Send-Keys "{ENTER}"
+Send-Keys "{ENTER}"  # Confirm to exit
