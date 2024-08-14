@@ -1,72 +1,62 @@
-# Load the necessary assembly to work with Excel files
-Add-Type -AssemblyName Microsoft.Office.Interop.Excel
+# Load the JSON file
+$jsonFilePath = "C:\path\to\your\file.json"
+$jsonContent = Get-Content -Path $jsonFilePath | ConvertFrom-Json
 
-# Define the path to the Excel file
-$excelFilePath = "C:\path\to\your\file.xlsx"
+# Initialize an array to store the output data
+$outputData = @()
 
-# Create a new Excel Application
-$excel = New-Object -ComObject Excel.Application
-$excel.Visible = $false
-$excel.DisplayAlerts = $false
-
-# Open the Excel Workbook
-$workbook = $excel.Workbooks.Open($excelFilePath)
-
-# Select the first worksheet
-$sheet = $workbook.Sheets.Item(1)
-
-# Find the last row with data
-$lastRow = $sheet.Cells($sheet.Rows.Count, 1).End(-4162).Row
-
-# Initialize a hashtable to group data by region
-$regionsData = @{}
-
-# Loop through each row starting from row 2 (assuming row 1 has headers)
-for ($i = 2; $i -le $lastRow; $i++) {
-    $region = $sheet.Cells.Item($i, 1).Text
-    $grgr_name = $sheet.Cells.Item($i, 3).Text
-    $grgr_id = $sheet.Cells.Item($i, 2).Text
-    $grgr_state = $sheet.Cells.Item($i, 5).Text
-    $run = $sheet.Cells.Item($i, 6).Text
-
-    # Prepare the group entry
-    $groupEntry = @{
-        "GRGR_NAME" = $grgr_name
-        "GRGR_ID" = $grgr_id
-        "GRGR_STATE" = $grgr_state
-        "Run" = $run
+# Loop through each region and group in the JSON content
+foreach ($region in $jsonContent.REGIONS) {
+    $regionName = $region.Region
+    $serverName = $region.ServerName
+    $databaseName = $region.DatabaseName
+    
+    # Construct the connection string for Windows Authentication
+    $connectionString = "Server=$serverName;Database=$databaseName;Integrated Security=True;"
+    
+    foreach ($group in $region.Groups) {
+        $run = $group.Run
+        $grgr_name = $group.GRGR_NAME
+        $grgr_id = $group.GRGR_ID
+        $grgr_state = $group.GRGR_STATE
+        
+        if ($run -eq "Y") {
+            $query = $group.QUERY
+            
+            # Create a new SQL connection using the Windows Authentication connection string
+            $connection = New-Object System.Data.SqlClient.SqlConnection
+            $connection.ConnectionString = $connectionString
+            $connection.Open()
+            
+            # Create and execute the SQL command
+            $command = $connection.CreateCommand()
+            $command.CommandText = $query
+            $reader = $command.ExecuteReader()
+            
+            # Process the results
+            while ($reader.Read()) {
+                $result = @{
+                    Region      = $regionName
+                    GRGR_NAME   = $grgr_name
+                    GRGR_ID     = $grgr_id
+                    GRGR_STATE  = $grgr_state
+                    Run         = $run
+                    RecordCount = $reader["RecordCount"]  # Assuming 'RecordCount' is the column name in your query result
+                }
+                $outputData += $result
+            }
+            
+            # Close the SQL connection
+            $connection.Close()
+        }
     }
-
-    # Add the entry to the corresponding region
-    if (-not $regionsData.ContainsKey($region)) {
-        $regionsData[$region] = @()
-    }
-    $regionsData[$region] += $groupEntry
 }
 
-# Convert the grouped data into the desired JSON structure
-$jsonData = @()
-foreach ($region in $regionsData.Keys) {
-    $regionEntry = @{
-        "Region" = $region
-        "Groups" = $regionsData[$region]
-    }
-    $jsonData += $regionEntry
-}
+# Display the data in a table format in the console
+$outputData | Format-Table -AutoSize
 
-# Convert the array to JSON format
-$jsonOutput = $jsonData | ConvertTo-Json -Depth 3
+# Optionally, export the results to a CSV file
+$outputData | Export-Csv -Path "C:\path\to\output\results.csv" -NoTypeInformation
 
-# Output the JSON to a file
-$jsonOutput | Out-File "C:\path\to\output\file_grouped.json"
-
-# Clean up
-$workbook.Close($false)
-$excel.Quit()
-
-# Release COM objects
-[System.Runtime.Interopservices.Marshal]::ReleaseComObject($sheet) | Out-Null
-[System.Runtime.Interopservices.Marshal]::ReleaseComObject($workbook) | Out-Null
-[System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
-[System.GC]::Collect()
-[System.GC]::WaitForPendingFinalizers()
+# Optionally, export the results to a JSON file
+$outputData | ConvertTo-Json -Depth 3 | Out-File "C:\path\to\output\results.json"
