@@ -18,35 +18,47 @@ $sheet = $workbook.Sheets.Item(1)
 # Find the last row with data
 $lastRow = $sheet.Cells($sheet.Rows.Count, 1).End(-4162).Row
 
-# Initialize an array to store the JSON structure
-$jsonData = @()
+# Initialize a hashtable to group data by region
+$regionsData = @{}
 
 # Loop through each row starting from row 2 (assuming row 1 has headers)
 for ($i = 2; $i -le $lastRow; $i++) {
     $region = $sheet.Cells.Item($i, 1).Text
-    $grgr_id = $sheet.Cells.Item($i, 2).Text
     $grgr_name = $sheet.Cells.Item($i, 3).Text
+    $grgr_id = $sheet.Cells.Item($i, 2).Text
     $grgr_state = $sheet.Cells.Item($i, 5).Text
     $run = $sheet.Cells.Item($i, 6).Text
 
-    # Create a hashtable for the current row
-    $currentRow = @{
-        "Region" = $region
-        "GRGR_ID" = $grgr_id
+    # Prepare the group entry
+    $groupEntry = @{
         "GRGR_NAME" = $grgr_name
+        "GRGR_ID" = $grgr_id
         "GRGR_STATE" = $grgr_state
         "Run" = $run
     }
 
-    # Add the row to the JSON data array
-    $jsonData += $currentRow
+    # Add the entry to the corresponding region
+    if (-not $regionsData.ContainsKey($region)) {
+        $regionsData[$region] = @()
+    }
+    $regionsData[$region] += $groupEntry
+}
+
+# Convert the grouped data into the desired JSON structure
+$jsonData = @()
+foreach ($region in $regionsData.Keys) {
+    $regionEntry = @{
+        "Region" = $region
+        "Groups" = $regionsData[$region]
+    }
+    $jsonData += $regionEntry
 }
 
 # Convert the array to JSON format
 $jsonOutput = $jsonData | ConvertTo-Json -Depth 3
 
 # Output the JSON to a file
-$jsonOutput | Out-File "C:\path\to\output\file.json"
+$jsonOutput | Out-File "C:\path\to\output\file_grouped.json"
 
 # Clean up
 $workbook.Close($false)
