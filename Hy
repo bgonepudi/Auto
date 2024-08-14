@@ -1,12 +1,60 @@
-@echo off
-:: Check if the script is running as administrator
-net session >nul 2>&1
-if %errorLevel% == 0 (
-    echo Already running as administrator.
-    PowerShell -NoExit -Command "Start-Process PowerShell -Verb runAs"
-) else (
-    echo Not running as administrator, elevating now...
-    :: Elevate the script to run as administrator
-    PowerShell -NoExit -Command "Start-Process PowerShell -Verb runAs"
-)
-exit
+# Load the necessary assembly to work with Excel files
+Add-Type -AssemblyName Microsoft.Office.Interop.Excel
+
+# Define the path to the Excel file
+$excelFilePath = "C:\path\to\your\file.xlsx"
+
+# Create a new Excel Application
+$excel = New-Object -ComObject Excel.Application
+$excel.Visible = $false
+$excel.DisplayAlerts = $false
+
+# Open the Excel Workbook
+$workbook = $excel.Workbooks.Open($excelFilePath)
+
+# Select the first worksheet
+$sheet = $workbook.Sheets.Item(1)
+
+# Find the last row with data
+$lastRow = $sheet.Cells($sheet.Rows.Count, 1).End(-4162).Row
+
+# Initialize an array to store the JSON structure
+$jsonData = @()
+
+# Loop through each row starting from row 2 (assuming row 1 has headers)
+for ($i = 2; $i -le $lastRow; $i++) {
+    $region = $sheet.Cells.Item($i, 1).Text
+    $grgr_id = $sheet.Cells.Item($i, 2).Text
+    $grgr_name = $sheet.Cells.Item($i, 3).Text
+    $grgr_state = $sheet.Cells.Item($i, 5).Text
+    $run = $sheet.Cells.Item($i, 6).Text
+
+    # Create a hashtable for the current row
+    $currentRow = @{
+        "Region" = $region
+        "GRGR_ID" = $grgr_id
+        "GRGR_NAME" = $grgr_name
+        "GRGR_STATE" = $grgr_state
+        "Run" = $run
+    }
+
+    # Add the row to the JSON data array
+    $jsonData += $currentRow
+}
+
+# Convert the array to JSON format
+$jsonOutput = $jsonData | ConvertTo-Json -Depth 3
+
+# Output the JSON to a file
+$jsonOutput | Out-File "C:\path\to\output\file.json"
+
+# Clean up
+$workbook.Close($false)
+$excel.Quit()
+
+# Release COM objects
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject($sheet) | Out-Null
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject($workbook) | Out-Null
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
+[System.GC]::Collect()
+[System.GC]::WaitForPendingFinalizers()
