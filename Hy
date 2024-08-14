@@ -1,71 +1,34 @@
-# Load the JSON File
-$jsonFilePath = "C:\repo\BG_tautils\file_grouped.json"
-$jsonContent = Get-Content -Path $jsonFilePath | ConvertFrom-Json
+# Load the JSON file content
+$jsonFilePath = "path_to_your_json_file.json"
+$jsonContent = Get-Content -Raw -Path $jsonFilePath | ConvertFrom-Json
 
-# Initialize an array to store the output data
-$outputData = @()
+# Create a new hashtable to hold the combined structure
+$combinedData = @{}
 
-# Initialize a counter for loop number
-$loopNumber = 1
+# Iterate through each property in the JSON content
+foreach ($key in $jsonContent.PSObject.Properties.Name) {
+    if ($key -match "^(.*?)\.(.+)$") {
+        $prefix = $matches[1]
+        $subKey = $matches[2]
 
-# Loop through each region in the JSON content
-foreach ($region in $jsonContent.REGIONS) {
-    $regionName = $region.Region
-    $runs = $region.Runs
-    $query = $region.QUERY
-
-    # Display the loop number and region
-    Write-Host "Processing Loop Number: $loopNumber for Region: $regionName and Runs: $runs"
-
-    # Check if runs is equal to "Y"
-    if ($runs -eq "Y") {
-        try {
-            # Construct the connection string (update as necessary)
-            $connectionString = "Data Source=$regionName;Initial Catalog=FACETS;Integrated Security=SSPI;"
-            
-            # Create a new SQL connection using the Windows Authentication connection string
-            $connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
-            $connection.Open()
-
-            # Create and execute the SQL command
-            $command = $connection.CreateCommand()
-            $command.CommandText = $query
-            $reader = $command.ExecuteReader()
-
-            # Process the results
-            while ($reader.Read()) {
-                # Initialize a hashtable to store the current row
-                $result = @{}
-                
-                # Loop through each column in the reader and add it to the hashtable
-                for ($i = 0; $i -lt $reader.FieldCount; $i++) {
-                    $columnName = $reader.GetName($i)
-                    $columnValue = $reader[$i]
-                    $result[$columnName] = $columnValue
-                }
-
-                # Add region-related information to the result
-                $result["Region"] = $regionName
-                $result["LoopNumber"] = $loopNumber
-
-                # Add the row to the output data array
-                $outputData += [PSCustomObject]$result
-            }
-        } catch {
-            Write-Host "Error executing query for region $regionName: $_"
-        } finally {
-            $connection.Close()
+        # Initialize the combined structure if it doesn't exist
+        if (-not $combinedData.ContainsKey($prefix)) {
+            $combinedData[$prefix] = @{}
         }
-    } else {
-        Write-Host "Skipping region $regionName as Runs is not 'Y'"
-    }
 
-    # Increment the loop number after each region
-    $loopNumber++
+        # Add the subKey and its value to the combined structure
+        $combinedData[$prefix][$subKey] = $jsonContent.$key
+
+        # Remove the original key from the JSON content
+        $jsonContent.PSObject.Properties.Remove($key)
+    }
 }
 
-# Output the data if needed (for example, to a CSV file)
-$outputData | Export-Csv -Path "C:\repo\BG_tautils\outputData.csv" -NoTypeInformation
+# Add the combined structure back to the JSON content
+foreach ($prefix in $combinedData.Keys) {
+    $jsonContent.PSObject.Properties.Add($prefix, $combinedData[$prefix])
+}
 
-# Optionally, display the output data in the console
-$outputData | Format-Table -AutoSize
+# Convert the updated structure back to JSON and save to a file
+$formattedJsonFilePath = "path_to_save_updated_json.json"
+$jsonContent | ConvertTo-Json -Depth 10 | Set-Content -Path $formattedJsonFilePath
