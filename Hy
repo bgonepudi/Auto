@@ -12,63 +12,52 @@ $loopNumber = 1
 foreach ($region in $jsonContent.REGIONS) {
     $regionName = $region.Region
     $runs = $region.Runs
+    $query = $region.QUERY
 
     # Display the loop number and region
-    Write-Host "Processing Loop Number: $loopNumber for Region: $regionName"
-    
+    Write-Host "Processing Loop Number: $loopNumber for Region: $regionName and Runs: $runs"
+
+    # Check if runs is equal to "Y"
     if ($runs -eq "Y") {
-        # Loop through each group within the region
-        foreach ($group in $region.Groups) {
-            $grgr_name = $group.GRGR_NAME
-            $grgr_id = $group.GRGR_ID
-            $grgr_state = $group.GRGR_STATE
-            $run = $group.Run
-            $query = $group.QUERY
+        try {
+            # Construct the connection string (update as necessary)
+            $connectionString = "Data Source=$regionName;Initial Catalog=FACETS;Integrated Security=SSPI;"
+            
+            # Create a new SQL connection using the Windows Authentication connection string
+            $connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
+            $connection.Open()
 
-            if ($run -eq "Y") {
-                try {
-                    # Construct the connection string (update as necessary)
-                    $connectionString = "Data Source=$regionName;Initial Catalog=Facets;Integrated Security=SSPI;"
-                    
-                    # Create a new SQL connection using the Windows Authentication connection string
-                    $connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
-                    $connection.Open()
+            # Create and execute the SQL command
+            $command = $connection.CreateCommand()
+            $command.CommandText = $query
+            $reader = $command.ExecuteReader()
 
-                    # Create and execute the SQL command
-                    $command = $connection.CreateCommand()
-                    $command.CommandText = $query
-                    $reader = $command.ExecuteReader()
-
-                    # Process the results
-                    while ($reader.Read()) {
-                        # Initialize a hashtable to store the current row
-                        $result = @{}
-                        
-                        # Loop through each column in the reader and add it to the hashtable
-                        for ($i = 0; $i -lt $reader.FieldCount; $i++) {
-                            $columnName = $reader.GetName($i)
-                            $columnValue = $reader[$i]
-                            $result[$columnName] = $columnValue
-                        }
-
-                        # Add region-related information to the result
-                        $result["Region"] = $regionName
-                        $result["GRGR_NAME"] = $grgr_name
-                        $result["GRGR_ID"] = $grgr_id
-                        $result["GRGR_STATE"] = $grgr_state
-                        $result["Run"] = $run
-                        $result["LoopNumber"] = $loopNumber
-
-                        # Add the row to the output data array
-                        $outputData += [PSCustomObject]$result
-                    }
-                } catch {
-                    Write-Host "Error executing query for region $regionName and group $grgr_name: $_"
-                } finally {
-                    $connection.Close()
+            # Process the results
+            while ($reader.Read()) {
+                # Initialize a hashtable to store the current row
+                $result = @{}
+                
+                # Loop through each column in the reader and add it to the hashtable
+                for ($i = 0; $i -lt $reader.FieldCount; $i++) {
+                    $columnName = $reader.GetName($i)
+                    $columnValue = $reader[$i]
+                    $result[$columnName] = $columnValue
                 }
+
+                # Add region-related information to the result
+                $result["Region"] = $regionName
+                $result["LoopNumber"] = $loopNumber
+
+                # Add the row to the output data array
+                $outputData += [PSCustomObject]$result
             }
+        } catch {
+            Write-Host "Error executing query for region $regionName: $_"
+        } finally {
+            $connection.Close()
         }
+    } else {
+        Write-Host "Skipping region $regionName as Runs is not 'Y'"
     }
 
     # Increment the loop number after each region
@@ -79,4 +68,4 @@ foreach ($region in $jsonContent.REGIONS) {
 $outputData | Export-Csv -Path "C:\repo\BG_tautils\outputData.csv" -NoTypeInformation
 
 # Optionally, display the output data in the console
-$outputData
+$outputData | Format-Table -AutoSize
