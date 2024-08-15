@@ -29,7 +29,7 @@ foreach ($key in $jsonContent.PSObject.Properties.Name) {
 
 # Add the combined structure back to the main content
 foreach ($prefix in $combinedData.Keys) {
-    $jsonContent.PSObject.Properties.Add($prefix, $combinedData[$prefix])
+    $jsonContent.$prefix = $combinedData[$prefix]
 }
 
 # Convert the updated structure back to JSON
