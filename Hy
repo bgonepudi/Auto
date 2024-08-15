@@ -1,41 +1,44 @@
-# Load the CSV file content
-$csvFilePath = "path_to_your_csv_file.csv"
-$csvContent = Import-Csv -Path $csvFilePath
+# Define the path to your JSON file
+$jsonFilePath = "C:\path\to\your\file.json"
 
-# Create an array to hold the final JSON objects
-$jsonArray = @()
+# Read the JSON content from the file
+$jsonContent = Get-Content -Path $jsonFilePath -Raw | ConvertFrom-Json
 
-# Iterate through each row in the CSV
-foreach ($row in $csvContent) {
-    # Create a new custom object for each row
-    $jsonObject = [PSCustomObject]@{}
+# Function to convert flat structures to nested structures dynamically
+function Convert-FlatToNested($jsonContent) {
+    # Gather all keys that follow the 'prefix.suffix' pattern
+    $keysToConvert = $jsonContent.PSObject.Properties.Name | Where-Object { $_ -match '\.' }
+    
+    # Group keys by their prefix
+    $groupedKeys = $keysToConvert | Group-Object { $_.Split('.')[0] }
 
-    # Iterate through each property (column) in the row
-    foreach ($column in $row.PSObject.Properties) {
-        if ($column.Name -match "^(.*?)\.(.+)$") {
-            $prefix = $matches[1]
-            $subKey = $matches[2]
+    foreach ($group in $groupedKeys) {
+        $prefix = $group.Name
+        $nestedObject = @{}
 
-            # Initialize the nested structure if it doesn't exist
-            if (-not $jsonObject.PSObject.Properties.Match($prefix)) {
-                $jsonObject | Add-Member -MemberType NoteProperty -Name $prefix -Value ([PSCustomObject]@{})
-            }
+        # Build the nested object
+        foreach ($key in $group.Group) {
+            $suffix = $key.Split('.')[1]
+            $nestedObject[$suffix] = $jsonContent[$key]
 
-            # Add the subKey and its value to the nested structure
-            $jsonObject.$prefix | Add-Member -MemberType NoteProperty -Name $subKey -Value $column.Value
-        } else {
-            # If the column doesn't have a dot, add it directly to the main object
-            $jsonObject | Add-Member -MemberType NoteProperty -Name $column.Name -Value $column.Value
+            # Remove the original flat key
+            $jsonContent.PSObject.Properties.Remove($key)
         }
+
+        # Assign the nested object to the original prefix
+        $jsonContent[$prefix] = $nestedObject
     }
 
-    # Add the processed object to the array
-    $jsonArray += $jsonObject
+    # Recursively process nested objects
+    foreach ($key in $jsonContent.PSObject.Properties.Name) {
+        if ($jsonContent.$key -is [System.Management.Automation.PSCustomObject]) {
+            Convert-FlatToNested -jsonContent $jsonContent.$key
+        }
+    }
 }
 
-# Convert the array to JSON
-$jsonOutput = $jsonArray | ConvertTo-Json -Depth 10
+# Perform the conversion
+Convert-FlatToNested -jsonContent $jsonContent
 
-# Save the JSON output to a file
-$jsonFilePath = "path_to_save_json_file.json"
-$jsonOutput | Set-Content -Path $jsonFilePath
+# Convert the modified content back to JSON and write to a file
+$jsonContent | ConvertTo-Json -Depth 10 | Set-Content -Path $jsonFilePath
