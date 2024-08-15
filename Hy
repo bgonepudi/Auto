@@ -1,34 +1,13 @@
-# Load the JSON file content
+# Load the raw content of the JSON file
 $jsonFilePath = "path_to_your_json_file.json"
-$jsonContent = Get-Content -Raw -Path $jsonFilePath | ConvertFrom-Json
+$jsonRawContent = Get-Content -Raw -Path $jsonFilePath
 
-# Create a new hashtable to hold the combined structure
-$combinedData = @{}
+# Convert the raw JSON content to a PowerShell object
+$jsonObject = $jsonRawContent | ConvertFrom-Json
 
-# Iterate through each property in the JSON content
-foreach ($key in $jsonContent.PSObject.Properties.Name) {
-    if ($key -match "^(.*?)\.(.+)$") {
-        $prefix = $matches[1]
-        $subKey = $matches[2]
+# Convert the JSON object back to a JSON string without formatting (no line breaks or indentation)
+$compactJson = $jsonObject | ConvertTo-Json -Compress
 
-        # Initialize the combined structure if it doesn't exist
-        if (-not $combinedData.ContainsKey($prefix)) {
-            $combinedData[$prefix] = @{}
-        }
-
-        # Add the subKey and its value to the combined structure
-        $combinedData[$prefix][$subKey] = $jsonContent.$key
-
-        # Remove the original key from the JSON content
-        $jsonContent.PSObject.Properties.Remove($key)
-    }
-}
-
-# Add the combined structure back to the JSON content
-foreach ($prefix in $combinedData.Keys) {
-    $jsonContent.PSObject.Properties.Add($prefix, $combinedData[$prefix])
-}
-
-# Convert the updated structure back to JSON and save to a file
-$formattedJsonFilePath = "path_to_save_updated_json.json"
-$jsonContent | ConvertTo-Json -Depth 10 | Set-Content -Path $formattedJsonFilePath
+# Save the compact JSON string to a new file
+$formattedJsonFilePath = "path_to_save_compact_json.json"
+Set-Content -Path $formattedJsonFilePath -Value $compactJson
