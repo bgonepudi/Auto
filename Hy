@@ -1,32 +1,41 @@
-# Load the JSON file content
-$jsonFilePath = "path_to_your_json_file.json"
-$jsonContent = Get-Content -Raw -Path $jsonFilePath | ConvertFrom-Json
+# Load the CSV file content
+$csvFilePath = "path_to_your_csv_file.csv"
+$csvContent = Import-Csv -Path $csvFilePath
 
-# Create a new custom object to hold the combined structure
-$finalContent = [PSCustomObject]@{}
+# Create an array to hold the final JSON objects
+$jsonArray = @()
 
-# Iterate through each property in the JSON content
-foreach ($key in $jsonContent.PSObject.Properties.Name) {
-    if ($key -match "^(.*?)\.(.+)$") {
-        $prefix = $matches[1]
-        $subKey = $matches[2]
+# Iterate through each row in the CSV
+foreach ($row in $csvContent) {
+    # Create a new custom object for each row
+    $jsonObject = [PSCustomObject]@{}
 
-        # Initialize the combined structure if it doesn't exist
-        if (-not $finalContent.PSObject.Properties.Match($prefix)) {
-            $finalContent | Add-Member -MemberType NoteProperty -Name $prefix -Value ([PSCustomObject]@{})
+    # Iterate through each property (column) in the row
+    foreach ($column in $row.PSObject.Properties) {
+        if ($column.Name -match "^(.*?)\.(.+)$") {
+            $prefix = $matches[1]
+            $subKey = $matches[2]
+
+            # Initialize the nested structure if it doesn't exist
+            if (-not $jsonObject.PSObject.Properties.Match($prefix)) {
+                $jsonObject | Add-Member -MemberType NoteProperty -Name $prefix -Value ([PSCustomObject]@{})
+            }
+
+            # Add the subKey and its value to the nested structure
+            $jsonObject.$prefix | Add-Member -MemberType NoteProperty -Name $subKey -Value $column.Value
+        } else {
+            # If the column doesn't have a dot, add it directly to the main object
+            $jsonObject | Add-Member -MemberType NoteProperty -Name $column.Name -Value $column.Value
         }
-
-        # Add the subKey and its value to the combined structure
-        $finalContent.$prefix | Add-Member -MemberType NoteProperty -Name $subKey -Value $jsonContent.$key
-    } else {
-        # If the key doesn't have a period, add it directly to the final content
-        $finalContent | Add-Member -MemberType NoteProperty -Name $key -Value $jsonContent.$key
     }
+
+    # Add the processed object to the array
+    $jsonArray += $jsonObject
 }
 
-# Convert the updated structure back to JSON
-$formattedJson = $finalContent | ConvertTo-Json -Depth 10
+# Convert the array to JSON
+$jsonOutput = $jsonArray | ConvertTo-Json -Depth 10
 
-# Save the formatted JSON back to a file
-$formattedJsonFilePath = "path_to_save_updated_json.json"
-$formattedJson | Set-Content -Path $formattedJsonFilePath
+# Save the JSON output to a file
+$jsonFilePath = "path_to_save_json_file.json"
+$jsonOutput | Set-Content -Path $jsonFilePath
