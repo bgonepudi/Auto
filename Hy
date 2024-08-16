@@ -1,44 +1,78 @@
-# Define the path to your JSON file
-$jsonFilePath = "C:\path\to\your\file.json"
+# Initialize an array to store the output data
+$outputData = @()
 
-# Read the JSON content from the file
-$jsonContent = Get-Content -Path $jsonFilePath -Raw | ConvertFrom-Json
+# Initialize a counter for loop number
+$loopNumber = 1
 
-# Function to convert flat structures to nested structures dynamically
-function Convert-FlatToNested($jsonContent) {
-    # Gather all keys that follow the 'prefix.suffix' pattern
-    $keysToConvert = $jsonContent.PSObject.Properties.Name | Where-Object { $_ -match '\.' }
-    
-    # Group keys by their prefix
-    $groupedKeys = $keysToConvert | Group-Object { $_.Split('.')[0] }
+# Loop through each region in the JSON content
+foreach ($region in $jsonContent.REGIONS) {
+    $regionName = $region.Region
+    $runs = $region.Runs
+    $query = $region.QUERY
 
-    foreach ($group in $groupedKeys) {
-        $prefix = $group.Name
-        $nestedObject = @{}
+    # Display the loop number and region
+    Write-Host "Processing Loop Number: $loopNumber for Region: $regionName and Runs: $runs"
 
-        # Build the nested object
-        foreach ($key in $group.Group) {
-            $suffix = $key.Split('.')[1]
-            $nestedObject[$suffix] = $jsonContent[$key]
+    # Check if runs is equal to "Y"
+    if ($runs -eq "Y") {
+        try {
+            # Construct the connection string (update as necessary)
+            $connectionString = "Data Source=$regionName;Initial Catalog=FACETS;Integrated Security=SSPI;"
 
-            # Remove the original flat key
-            $jsonContent.PSObject.Properties.Remove($key)
+            # Create a new SQL connection using the Windows Authentication connection string
+            $connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
+            $connection.Open()
+
+            # Create and execute the SQL command
+            $command = $connection.CreateCommand()
+            $command.CommandText = $query
+            $reader = $command.ExecuteReader()
+
+            # Process the results
+            while ($reader.Read()) {
+                $grgr_ck = $reader["GRGR_CK"]
+                $regionValue = $reader["Region"]
+                $membership = $reader["Membership"]
+                $run_date = Get-Date -Format "yyyy-MM-dd"
+                $creation = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+
+                # Prepare the INSERT statement
+                $insertCommand = $connection.CreateCommand()
+                $insertCommand.CommandText = "
+                    INSERT INTO ta_reporting.enrollment_audit (grgr_ck, region, membership, run_date, creation)
+                    VALUES ($grgr_ck, '$regionValue', $membership, '$run_date', '$creation')
+                "
+                $insertCommand.ExecuteNonQuery() # Execute the INSERT command
+
+                # Optionally, add the result to the output array for further processing
+                $result = @{
+                    "GRGR_CK" = $grgr_ck
+                    "Region" = $regionValue
+                    "Membership" = $membership
+                    "RunDate" = $run_date
+                    "Creation" = $creation
+                }
+                $outputData += [PSCustomObject]$result
+            }
+        } catch {
+            Write-Host "Error executing query for region $regionName $_"
+            $global:Fail++
+            $overall_status_parsed = 'false'
+        } finally {
+            $connection.Close()
+            $global:PASS++
+            $overall_status_parsed = 'true'
         }
-
-        # Assign the nested object to the original prefix
-        $jsonContent[$prefix] = $nestedObject
+    } else {
+        Write-Host "Skipping region $regionName as Runs is not 'Y'"
     }
 
-    # Recursively process nested objects
-    foreach ($key in $jsonContent.PSObject.Properties.Name) {
-        if ($jsonContent.$key -is [System.Management.Automation.PSCustomObject]) {
-            Convert-FlatToNested -jsonContent $jsonContent.$key
-        }
-    }
+    # Increment the loop number after each region
+    $loopNumber++
 }
 
-# Perform the conversion
-Convert-FlatToNested -jsonContent $jsonContent
+# Output the data if needed (for example, to a CSV file)
+$outputData | Export-Csv -Path "C:\repo\BG_Tasks\outputData.csv" -NoTypeInformation
 
-# Convert the modified content back to JSON and write to a file
-$jsonContent | ConvertTo-Json -Depth 10 | Set-Content -Path $jsonFilePath
+# Optionally, display the output data in the console
+$outputData | Format-Table -AutoSize
