@@ -36,6 +36,9 @@ foreach ($region in $jsonContent.REGIONS) {
                 $run_date = Get-Date -Format "yyyy-MM-dd"
                 $creation = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
+                # Close the reader before executing the INSERT command
+                $reader.Close()
+
                 # Prepare the INSERT statement
                 $insertCommand = $connection.CreateCommand()
                 $insertCommand.CommandText = "
@@ -43,6 +46,9 @@ foreach ($region in $jsonContent.REGIONS) {
                     VALUES ($grgr_ck, '$regionValue', $membership, '$run_date', '$creation')
                 "
                 $insertCommand.ExecuteNonQuery() # Execute the INSERT command
+
+                # Optionally, reopen the reader if you need to continue processing
+                $reader = $command.ExecuteReader()
 
                 # Optionally, add the result to the output array for further processing
                 $result = @{
@@ -59,6 +65,7 @@ foreach ($region in $jsonContent.REGIONS) {
             $global:Fail++
             $overall_status_parsed = 'false'
         } finally {
+            if ($reader) { $reader.Close() }
             $connection.Close()
             $global:PASS++
             $overall_status_parsed = 'true'
