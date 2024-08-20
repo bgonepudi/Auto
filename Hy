@@ -26,8 +26,12 @@ def convert_to_nested_structure(flat_data):
 
     return nested_data
 
+# Path to your JSON file
+input_file_path = 'C:/path/to/your/data.json'
+output_file_path = 'C:/path/to/your/nested_data.json'
+
 # Read the JSON file
-with open('data.json', 'r') as file:
+with open(input_file_path, 'r') as file:
     data = json.load(file)
 
 # Convert the flat JSON structure to a nested structure
@@ -37,5 +41,5 @@ nested_data = convert_to_nested_structure(data)
 pprint.pprint(nested_data)
 
 # Save the nested structure back to a new JSON file
-with open('nested_data.json', 'w') as file:
+with open(output_file_path, 'w') as file:
     json.dump(nested_data, file, indent=4)
