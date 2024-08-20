@@ -51,6 +51,9 @@ function Convert-ToNestedStructure {
 # Read the JSON file
 $flatData = Get-Content -Raw -Path $inputFilePath | ConvertFrom-Json
 
+# Convert the JSON object to a hashtable
+$flatData = @{} + $flatData
+
 # Convert the flat JSON structure to a nested structure
 $nestedData = Convert-ToNestedStructure -FlatData $flatData
 
