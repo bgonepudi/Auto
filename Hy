@@ -1,45 +1,58 @@
-import json
-import pprint
+# Define the path to the input and output JSON files
+$inputFilePath = "C:\path\to\your\data.json"
+$outputFilePath = "C:\path\to\your\nested_data.json"
 
-def convert_to_nested_structure(flat_data):
-    nested_data = {}
+# Function to convert a flat structure into a nested structure
+function Convert-ToNestedStructure {
+    param (
+        [Parameter(Mandatory=$true)]
+        [hashtable]$FlatData
+    )
 
-    for key, value in flat_data.items():
-        keys = key.split('.')
-        d = nested_data
-        
-        for k in keys[:-1]:
-            if k.endswith(']'):  # Check for array indices like 'customers[0]'
-                k, idx = k[:-1].split('[')
-                idx = int(idx)
-                if k not in d:
-                    d[k] = []
-                while len(d[k]) <= idx:
-                    d[k].append({})
-                d = d[k][idx]
-            else:
-                if k not in d:
-                    d[k] = {}
-                d = d[k]
+    $nestedData = @{}
 
-        d[keys[-1]] = value
+    foreach ($key in $FlatData.Keys) {
+        $value = $FlatData[$key]
+        $keys = $key -split '\.'
 
-    return nested_data
+        $ref = $nestedData
 
-# Path to your JSON file
-input_file_path = 'C:/path/to/your/data.json'
-output_file_path = 'C:/path/to/your/nested_data.json'
+        foreach ($i in 0..($keys.Length - 2)) {
+            $k = $keys[$i]
+
+            if ($k -match '(.+?)\[(\d+)\]') {
+                $arrayName = $matches[1]
+                $index = [int]$matches[2]
+
+                if (-not $ref.ContainsKey($arrayName)) {
+                    $ref[$arrayName] = @()
+                }
+
+                if ($ref[$arrayName].Count -le $index) {
+                    $ref[$arrayName] += @{}
+                }
+
+                $ref = $ref[$arrayName][$index]
+            } else {
+                if (-not $ref.ContainsKey($k)) {
+                    $ref[$k] = @{}
+                }
+
+                $ref = $ref[$k]
+            }
+        }
+
+        $ref[$keys[-1]] = $value
+    }
+
+    return $nestedData
+}
 
 # Read the JSON file
-with open(input_file_path, 'r') as file:
-    data = json.load(file)
+$flatData = Get-Content -Raw -Path $inputFilePath | ConvertFrom-Json
 
 # Convert the flat JSON structure to a nested structure
-nested_data = convert_to_nested_structure(data)
+$nestedData = Convert-ToNestedStructure -FlatData $flatData
 
-# Print the nested structure
-pprint.pprint(nested_data)
-
-# Save the nested structure back to a new JSON file
-with open(output_file_path, 'w') as file:
-    json.dump(nested_data, file, indent=4)
+# Convert the nested structure back to JSON and save it to a new file
+$nestedData | ConvertTo-Json -Depth 10 | Set-Content -Path $outputFilePath
