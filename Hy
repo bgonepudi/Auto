@@ -1,6 +1,6 @@
 # Define the path to the input and output JSON files
 $inputFilePath = "C:\path\to\your\data.json"
-$outputFilePath = "C:\path\to\your\nested_data.json"
+$outputFilePath = "C:\path\to\your\nested_and_flat_data.json"
 
 # Function to convert a flat structure into a nested structure
 function Convert-ToNestedStructure {
@@ -57,5 +57,11 @@ $flatData = @{} + $flatData
 # Convert the flat JSON structure to a nested structure
 $nestedData = Convert-ToNestedStructure -FlatData $flatData
 
-# Convert the nested structure back to JSON and save it to a new file
-$nestedData | ConvertTo-Json -Depth 10 | Set-Content -Path $outputFilePath
+# Combine both flat and nested structures into one object
+$combinedData = @{
+    FlatData = $flatData
+    NestedData = $nestedData
+}
+
+# Convert the combined structure back to JSON and save it to a new file
+$combinedData | ConvertTo-Json -Depth 10 | Set-Content -Path $outputFilePath
