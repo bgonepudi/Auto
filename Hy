@@ -1,85 +1,41 @@
-# Initialize an array to store the output data
-$outputData = @()
+import json
+import pprint
 
-# Initialize a counter for loop number
-$loopNumber = 1
+def convert_to_nested_structure(flat_data):
+    nested_data = {}
 
-# Loop through each region in the JSON content
-foreach ($region in $jsonContent.REGIONS) {
-    $regionName = $region.Region
-    $runs = $region.Runs
-    $query = $region.QUERY
+    for key, value in flat_data.items():
+        keys = key.split('.')
+        d = nested_data
+        
+        for k in keys[:-1]:
+            if k.endswith(']'):  # Check for array indices like 'customers[0]'
+                k, idx = k[:-1].split('[')
+                idx = int(idx)
+                if k not in d:
+                    d[k] = []
+                while len(d[k]) <= idx:
+                    d[k].append({})
+                d = d[k][idx]
+            else:
+                if k not in d:
+                    d[k] = {}
+                d = d[k]
 
-    # Display the loop number and region
-    Write-Host "Processing Loop Number: $loopNumber for Region: $regionName and Runs: $runs"
+        d[keys[-1]] = value
 
-    # Check if runs is equal to "Y"
-    if ($runs -eq "Y") {
-        try {
-            # Construct the connection string (update as necessary)
-            $connectionString = "Data Source=$regionName;Initial Catalog=FACETS;Integrated Security=SSPI;"
+    return nested_data
 
-            # Create a new SQL connection using the Windows Authentication connection string
-            $connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
-            $connection.Open()
+# Read the JSON file
+with open('data.json', 'r') as file:
+    data = json.load(file)
 
-            # Create and execute the SQL command
-            $command = $connection.CreateCommand()
-            $command.CommandText = $query
-            $reader = $command.ExecuteReader()
+# Convert the flat JSON structure to a nested structure
+nested_data = convert_to_nested_structure(data)
 
-            # Process the results
-            while ($reader.Read()) {
-                $grgr_ck = $reader["GRGR_CK"]
-                $regionValue = $reader["Region"]
-                $membership = $reader["Membership"]
-                $run_date = Get-Date -Format "yyyy-MM-dd"
-                $creation = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+# Print the nested structure
+pprint.pprint(nested_data)
 
-                # Close the reader before executing the INSERT command
-                $reader.Close()
-
-                # Prepare the INSERT statement
-                $insertCommand = $connection.CreateCommand()
-                $insertCommand.CommandText = "
-                    INSERT INTO ta_reporting.enrollment_audit (grgr_ck, region, membership, run_date, creation)
-                    VALUES ($grgr_ck, '$regionValue', $membership, '$run_date', '$creation')
-                "
-                $insertCommand.ExecuteNonQuery() # Execute the INSERT command
-
-                # Optionally, reopen the reader if you need to continue processing
-                $reader = $command.ExecuteReader()
-
-                # Optionally, add the result to the output array for further processing
-                $result = @{
-                    "GRGR_CK" = $grgr_ck
-                    "Region" = $regionValue
-                    "Membership" = $membership
-                    "RunDate" = $run_date
-                    "Creation" = $creation
-                }
-                $outputData += [PSCustomObject]$result
-            }
-        } catch {
-            Write-Host "Error executing query for region $regionName $_"
-            $global:Fail++
-            $overall_status_parsed = 'false'
-        } finally {
-            if ($reader) { $reader.Close() }
-            $connection.Close()
-            $global:PASS++
-            $overall_status_parsed = 'true'
-        }
-    } else {
-        Write-Host "Skipping region $regionName as Runs is not 'Y'"
-    }
-
-    # Increment the loop number after each region
-    $loopNumber++
-}
-
-# Output the data if needed (for example, to a CSV file)
-$outputData | Export-Csv -Path "C:\repo\BG_Tasks\outputData.csv" -NoTypeInformation
-
-# Optionally, display the output data in the console
-$outputData | Format-Table -AutoSize
+# Save the nested structure back to a new JSON file
+with open('nested_data.json', 'w') as file:
+    json.dump(nested_data, file, indent=4)
