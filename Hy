@@ -1,67 +1,36 @@
-# Define the path to the input and output JSON files
-$inputFilePath = "C:\path\to\your\data.json"
-$outputFilePath = "C:\path\to\your\nested_and_flat_data.json"
+# Define the list of VMs
+$vmList = @(
+    "VM1_IP_or_Hostname",
+    "VM2_IP_or_Hostname",
+    "VM3_IP_or_Hostname"
+    # Add more VMs as needed
+)
 
-# Function to convert a flat structure into a nested structure
-function Convert-ToNestedStructure {
-    param (
-        [Parameter(Mandatory=$true)]
-        [hashtable]$FlatData
-    )
+# Common username
+$username = "YourUsername"
 
-    $nestedData = @{}
+# Retrieve the stored password
+$password = Get-Content "C:\Path\To\password.txt" | ConvertTo-SecureString
+$credentials = New-Object System.Management.Automation.PSCredential ($username, $password)
 
-    foreach ($key in $FlatData.Keys) {
-        $value = $FlatData[$key]
-        $keys = $key -split '\.'
+foreach ($vm in $vmList) {
+    # Create a temporary RDP file for each VM
+    $rdpFile = "$env:TEMP\$vm.rdp"
+    New-Item -Path $rdpFile -ItemType File -Force | Out-Null
 
-        $ref = $nestedData
+    # Populate the RDP file with the necessary details
+    Add-Content $rdpFile "full address:s:$vm"
+    Add-Content $rdpFile "username:s:$username"
+    Add-Content $rdpFile "password 51:b:$([System.Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($password)))"
 
-        foreach ($i in 0..($keys.Length - 2)) {
-            $k = $keys[$i]
+    # Start the Remote Desktop session using the RDP file
+    Start-Process "mstsc.exe" -ArgumentList $rdpFile
 
-            if ($k -match '(.+?)\[(\d+)\]') {
-                $arrayName = $matches[1]
-                $index = [int]$matches[2]
+    # Wait for 2 minutes (120 seconds)
+    Start-Sleep -Seconds 120
 
-                if (-not $ref.ContainsKey($arrayName)) {
-                    $ref[$arrayName] = @()
-                }
-
-                if ($ref[$arrayName].Count -le $index) {
-                    $ref[$arrayName] += @{}
-                }
-
-                $ref = $ref[$arrayName][$index]
-            } else {
-                if (-not $ref.ContainsKey($k)) {
-                    $ref[$k] = @{}
-                }
-
-                $ref = $ref[$k]
-            }
-        }
-
-        $ref[$keys[-1]] = $value
-    }
-
-    return $nestedData
+    # Remove the temporary RDP file
+    Remove-Item $rdpFile
 }
 
-# Read the JSON file
-$flatData = Get-Content -Raw -Path $inputFilePath | ConvertFrom-Json
-
-# Convert the JSON object to a hashtable
-$flatData = @{} + $flatData
-
-# Convert the flat JSON structure to a nested structure
-$nestedData = Convert-ToNestedStructure -FlatData $flatData
-
-# Combine both flat and nested structures into one object
-$combinedData = @{
-    FlatData = $flatData
-    NestedData = $nestedData
-}
-
-# Convert the combined structure back to JSON and save it to a new file
-$combinedData | ConvertTo-Json -Depth 10 | Set-Content -Path $outputFilePath
+Write-Host "Remote Desktop sessions initiated for all VMs."
