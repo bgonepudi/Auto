@@ -10,8 +10,10 @@ $vmList = @(
 $username = "YourUsername"
 
 # Retrieve the stored password
-$password = Get-Content "C:\Path\To\password.txt" | ConvertTo-SecureString
-$credentials = New-Object System.Management.Automation.PSCredential ($username, $password)
+$securePassword = Get-Content "C:\repo\BGS_tautils\VMLogin\password.txt" | ConvertTo-SecureString
+
+# Create the credentials object
+$credentials = New-Object System.Management.Automation.PSCredential ($username, $securePassword)
 
 foreach ($vm in $vmList) {
     # Create a temporary RDP file for each VM
@@ -21,8 +23,7 @@ foreach ($vm in $vmList) {
     # Populate the RDP file with the necessary details
     Add-Content $rdpFile "full address:s:$vm"
     Add-Content $rdpFile "username:s:$username"
-    Add-Content $rdpFile "password 51:b:$([System.Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($password)))"
-
+    
     # Start the Remote Desktop session using the RDP file
     Start-Process "mstsc.exe" -ArgumentList $rdpFile
 
