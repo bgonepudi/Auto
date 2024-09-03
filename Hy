@@ -1,37 +1,25 @@
-# Define the list of VMs
-$vmList = @(
-    "VM1_IP_or_Hostname",
-    "VM2_IP_or_Hostname",
-    "VM3_IP_or_Hostname"
-    # Add more VMs as needed
-)
+# Define the Selenium Grid Console URL
+$url = "http://your-grid-url:4444/grid/console"
 
-# Common username
-$username = "YourUsername"
+# Fetch the HTML content from the Grid Console URL
+$htmlContent = Invoke-WebRequest -Uri $url -UseBasicParsing
 
-# Retrieve the stored password
-$securePassword = Get-Content "C:\repo\BGS_tautils\VMLogin\password.txt" | ConvertTo-SecureString
+# Parse the HTML to find IP addresses of the nodes
+# Assuming the IP addresses are in the form of "http://<ip-address>:port"
+$ipPattern = "http://(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):\d+"
+$matches = [regex]::Matches($htmlContent.Content, $ipPattern)
 
-# Create the credentials object
-$credentials = New-Object System.Management.Automation.PSCredential ($username, $securePassword)
+# Extract and store unique IP addresses
+$ips = $matches | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
 
-foreach ($vm in $vmList) {
-    # Create a temporary RDP file for each VM
-    $rdpFile = "$env:TEMP\$vm.rdp"
-    New-Item -Path $rdpFile -ItemType File -Force | Out-Null
+# Loop through each IP address and ping it
+foreach ($ip in $ips) {
+    Write-Host "Pinging $ip..."
+    $pingResult = Test-Connection -ComputerName $ip -Count 4 -ErrorAction SilentlyContinue
 
-    # Populate the RDP file with the necessary details
-    Add-Content $rdpFile "full address:s:$vm"
-    Add-Content $rdpFile "username:s:$username"
-    
-    # Start the Remote Desktop session using the RDP file
-    Start-Process "mstsc.exe" -ArgumentList $rdpFile
-
-    # Wait for 2 minutes (120 seconds)
-    Start-Sleep -Seconds 120
-
-    # Remove the temporary RDP file
-    Remove-Item $rdpFile
+    if ($pingResult) {
+        Write-Host "Node $ip is up and responding."
+    } else {
+        Write-Host "Node $ip is down or not responding."
+    }
 }
-
-Write-Host "Remote Desktop sessions initiated for all VMs."
