@@ -3,27 +3,28 @@ $gridUrl = "http://your-grid-console-url/grid/console"
 $webClient = New-Object System.Net.WebClient
 $pageContent = $webClient.DownloadString($gridUrl)
 
-# Regex pattern to extract IP addresses
+# Regex patterns to extract IP addresses and Chrome browser statuses
 $ipRegex = [regex]::new('id : http://([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+):')
-$ipMatches = $ipRegex.Matches($pageContent)
+$chromeStatusRegex = [regex]::new('<img src="/grid/resources/org/openqa/grid/images/chrome\.png".+?title="seleniumProtocol=WebDriver"')
 
-# Regex pattern to find the status of Chrome browsers
-$chromeStatusRegex = [regex]::new('<img src="/grid/resources/org/openqa/grid/images/chrome\.png".+?title="seleniumProtocol=WebDriver".+?>')
-$chromeStatusMatches = $chromeStatusRegex.Matches($pageContent)
+# Find all IP addresses
+$ipMatches = $ipRegex.Matches($pageContent)
 
 # Create an array to store results
 $results = @()
 
-# Iterate through the IP addresses and match with the Chrome browser statuses
-for ($i = 0; $i -lt $ipMatches.Count; $i++) {
-    $ip = $ipMatches[$i].Groups[1].Value
-    $chromeIconsCount = ($chromeStatusMatches | Measure-Object).Count
-
+# Iterate through the IP addresses
+foreach ($ipMatch in $ipMatches) {
+    $ip = $ipMatch.Groups[1].Value
+    
+    # Find Chrome browser instances associated with this IP
+    $chromeCount = ($pageContent -match "<p>Browsers.*?WebDriver.*?$ip.*?chrome.png" | Measure-Object).Count
+    
     # Add the result to the array
     $results += [PSCustomObject]@{
         "IP Address" = $ip
-        "Chrome Browser Instances" = $chromeIconsCount
-        "Status" = "Available"  # Assuming the presence of icons implies availability
+        "Chrome Browser Instances" = $chromeCount
+        "Status" = if ($chromeCount -gt 0) { "Available" } else { "Unavailable" }
     }
 }
 
