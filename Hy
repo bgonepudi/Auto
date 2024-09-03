@@ -1,25 +1,31 @@
-# Define the Selenium Grid Console URL
-$url = "http://your-grid-url:4444/grid/console"
+# Load the Selenium Grid Console webpage
+$gridUrl = "http://your-grid-console-url/grid/console"
+$webClient = New-Object System.Net.WebClient
+$pageContent = $webClient.DownloadString($gridUrl)
 
-# Fetch the HTML content from the Grid Console URL
-$htmlContent = Invoke-WebRequest -Uri $url -UseBasicParsing
+# Regex pattern to extract IP addresses
+$ipRegex = [regex]::new('id : http://([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+):')
+$ipMatches = $ipRegex.Matches($pageContent)
 
-# Parse the HTML to find IP addresses of the nodes
-# Assuming the IP addresses are in the form of "http://<ip-address>:port"
-$ipPattern = "http://(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):\d+"
-$matches = [regex]::Matches($htmlContent.Content, $ipPattern)
+# Regex pattern to find the status of Chrome browsers
+$chromeStatusRegex = [regex]::new('<img src="/grid/resources/org/openqa/grid/images/chrome\.png".+?title="seleniumProtocol=WebDriver".+?>')
+$chromeStatusMatches = $chromeStatusRegex.Matches($pageContent)
 
-# Extract and store unique IP addresses
-$ips = $matches | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+# Create an array to store results
+$results = @()
 
-# Loop through each IP address and ping it
-foreach ($ip in $ips) {
-    Write-Host "Pinging $ip..."
-    $pingResult = Test-Connection -ComputerName $ip -Count 4 -ErrorAction SilentlyContinue
+# Iterate through the IP addresses and match with the Chrome browser statuses
+for ($i = 0; $i -lt $ipMatches.Count; $i++) {
+    $ip = $ipMatches[$i].Groups[1].Value
+    $chromeIconsCount = ($chromeStatusMatches | Measure-Object).Count
 
-    if ($pingResult) {
-        Write-Host "Node $ip is up and responding."
-    } else {
-        Write-Host "Node $ip is down or not responding."
+    # Add the result to the array
+    $results += [PSCustomObject]@{
+        "IP Address" = $ip
+        "Chrome Browser Instances" = $chromeIconsCount
+        "Status" = "Available"  # Assuming the presence of icons implies availability
     }
 }
+
+# Output the results as a table
+$results | Format-Table -AutoSize
