@@ -1,32 +1,106 @@
-# Load the Selenium Grid Console webpage
-$gridUrl = "http://your-grid-console-url/grid/console"
-$webClient = New-Object System.Net.WebClient
-$pageContent = $webClient.DownloadString($gridUrl)
+# Initialize variables
+$summary = @()
+$index = 1
+$retryCount = 1
+$retryLimit = 1
 
-# Regex patterns to extract IP addresses and Chrome browser statuses
-$ipRegex = [regex]::new('id : http://([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+):')
-$chromeStatusRegex = [regex]::new('<img src="/grid/resources/org/openqa/grid/images/chrome\.png".+?title="seleniumProtocol=WebDriver"')
+# Sample websites hash table (Replace with your actual data)
+$websites = @{
+    "iPay (Self Service Paycheck)" = "https://Portal.adp.com"
+    "RightSource (WAND)" = "https://chu.taleo.net"
+    "hCue/BL Hub" = "https://ux-ctadmin.edvantage.com"
+    "WeightWatchers" = "https://www.weightwatchers.com"
+    "Lyra" = "https://amerihealthcaritas.lyrahealth.com"
+}
 
-# Find all IP addresses
-$ipMatches = $ipRegex.Matches($pageContent)
+# Loop through websites and gather results
+foreach ($websiteName in $websites.Keys) {
+    $websiteUrl = $websites[$websiteName]
+    $retryAttempt = 1
+    $retrySuccessful = $false
 
-# Create an array to store results
-$results = @()
+    while ($retryAttempt -le $retryLimit -and !$retrySuccessful) {
+        try {
+            $response = Invoke-WebRequest -Uri $websiteUrl
+            if ($response.StatusCode -eq 200) {
+                $status = "Pass"
+                $retrySuccessful = $true
+                $statusCode = $response.StatusCode
+            } else {
+                $status = "Fail"
+                $statusCode = $response.StatusCode
+            }
+        } catch {
+            $status = "Fail"
+            $statusCode = "N/A"
+        }
 
-# Iterate through the IP addresses
-foreach ($ipMatch in $ipMatches) {
-    $ip = $ipMatch.Groups[1].Value
-    
-    # Find Chrome browser instances associated with this IP
-    $chromeCount = ($pageContent -match "<p>Browsers.*?WebDriver.*?$ip.*?chrome.png" | Measure-Object).Count
-    
-    # Add the result to the array
-    $results += [PSCustomObject]@{
-        "IP Address" = $ip
-        "Chrome Browser Instances" = $chromeCount
-        "Status" = if ($chromeCount -gt 0) { "Available" } else { "Unavailable" }
+        # Build the custom object for each result
+        $websiteInfo = [PSCustomObject]@{
+            Number       = $index
+            WebsiteName  = $websiteName
+            Status       = $status
+            Url          = $websiteUrl
+            StatusCode   = $statusCode
+            RetryAttempt = $retryAttempt
+        }
+        $summary += $websiteInfo
+        $retryAttempt++
+        $index++
     }
 }
 
-# Output the results as a table
-$results | Format-Table -AutoSize
+# Create HTML email body
+$HtmlBody = @"
+<html>
+<head>
+<style>
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  table, th, td {
+    border: 1px solid black;
+    padding: 8px;
+    text-align: left;
+  }
+  th {
+    background-color: #f2f2f2;
+  }
+</style>
+</head>
+<body>
+<h3>Test Results:</h3>
+<table>
+  <tr>
+    <th>Number</th>
+    <th>Website Name</th>
+    <th>Status</th>
+    <th>URL</th>
+    <th>Status Code</th>
+    <th>Retry Attempt</th>
+  </tr>
+"@
+
+# Add each row to the HTML body
+foreach ($result in $summary) {
+    $HtmlBody += "<tr>"
+    $HtmlBody += "<td>$($result.Number)</td>"
+    $HtmlBody += "<td>$($result.WebsiteName)</td>"
+    $HtmlBody += "<td>$($result.Status)</td>"
+    $HtmlBody += "<td><a href='$($result.Url)'>$($result.Url)</a></td>"
+    $HtmlBody += "<td>$($result.StatusCode)</td>"
+    $HtmlBody += "<td>$($result.RetryAttempt)</td>"
+    $HtmlBody += "</tr>"
+}
+
+# Close the HTML
+$HtmlBody += "</table></body></html>"
+
+# Send the email
+Send-MailMessage -From "your-email@example.com" `
+                 -To "recipient-email@example.com" `
+                 -Subject "Test Automation Results" `
+                 -Body $HtmlBody `
+                 -BodyAsHtml `
+                 -SmtpServer "smtp.yourserver.com"
