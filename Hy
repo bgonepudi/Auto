@@ -1,28 +1,52 @@
-import pyodbc
-import pandas as pd
+# Define connection strings for both servers
+$connectionString1 = "Server=Server1;Database=Database1;Integrated Security=True;"
+$connectionString2 = "Server=Server2;Database=Database2;Integrated Security=True;"
 
-# Connect to first server using Windows authentication
-conn1 = pyodbc.connect('DRIVER={SQL Server};'
-                       'SERVER=Server1;'
-                       'DATABASE=Database1;'
-                       'Trusted_Connection=yes;')
+# Define the query you want to run
+$query = "SELECT * FROM TableName ORDER BY PrimaryKeyColumn;"
 
-# Connect to second server using Windows authentication
-conn2 = pyodbc.connect('DRIVER={SQL Server};'
-                       'SERVER=Server2;'
-                       'DATABASE=Database2;'
-                       'Trusted_Connection=yes;')
+# Function to execute the SQL query and return results
+function Get-SQLData {
+    param (
+        [string]$connectionString,
+        [string]$query
+    )
+
+    # Create a SQL connection
+    $connection = New-Object System.Data.SqlClient.SqlConnection
+    $connection.ConnectionString = $connectionString
+    $connection.Open()
+
+    # Create a SQL command
+    $command = $connection.CreateCommand()
+    $command.CommandText = $query
+
+    # Execute the SQL command
+    $adapter = New-Object System.Data.SqlClient.SqlDataAdapter $command
+    $dataTable = New-Object System.Data.DataTable
+    $adapter.Fill($dataTable)
+
+    # Close the connection
+    $connection.Close()
+
+    # Return the DataTable
+    return $dataTable
+}
 
 # Fetch data from both tables
-query = 'SELECT * FROM TableName ORDER BY PrimaryKeyColumn'
-df1 = pd.read_sql(query, conn1)
-df2 = pd.read_sql(query, conn2)
+$dataTable1 = Get-SQLData -connectionString $connectionString1 -query $query
+$dataTable2 = Get-SQLData -connectionString $connectionString2 -query $query
 
-# Ensure column names are aligned (if necessary)
-df1.columns = df2.columns
+# Compare the two DataTables
+# Note: PowerShell doesn’t have an exact equivalent to pandas' 'compare' method. Instead, you can use manual comparison.
 
-# Compare tables
-comparison = df1.compare(df2)
+# Convert DataTables to JSON for easier comparison
+$json1 = $dataTable1 | ConvertTo-Json
+$json2 = $dataTable2 | him ConvertTo-Json
 
-# Print the comparison result
-print(comparison)
+# Compare the two JSON strings
+if ($json1 -ne $json2) {
+    Write-Host "Tables are different"
+} else {
+    Write-Host "Tables are identical"
+}
