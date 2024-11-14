@@ -7,18 +7,24 @@ $logFile = "C:\path\to\comparison_log_$(Get-Date -Format 'yyyyMMdd_HHmmss').txt"
 $startTime = Get-Date
 Write-Output "Comparison started at: $startTime"
 
-# Read the contents of each file into arrays
-$file1Lines = Get-Content -Path $file1Path
-$file2Lines = Get-Content -Path $file2Path
-
 # Prepare log output
 $logContent = @()
 $differencesFound = $false
 
-# Compare each line and segment
-for ($i = 0; $i -lt [math]::Max($file1Lines.Length, $file2Lines.Length); $i++) {
-    $line1 = if ($i -lt $file1Lines.Length) { $file1Lines[$i] } else { "" }
-    $line2 = if ($i -lt $file2Lines.Length) { $file2Lines[$i] } else { "" }
+# Use StreamReader to read files line-by-line
+$reader1 = [System.IO.StreamReader]::new($file1Path)
+$reader2 = [System.IO.StreamReader]::new($file2Path)
+
+# Initialize line counter
+$lineNumber = 0
+
+# Read lines in parallel
+while (($line1 = $reader1.ReadLine()) -ne $null -or ($line2 = $reader2.ReadLine()) -ne $null) {
+    $lineNumber++
+    
+    # Default values if one file is shorter
+    if ($line1 -eq $null) { $line1 = "" }
+    if ($line2 -eq $null) { $line2 = "" }
 
     # Split lines into segments (assuming space as a delimiter, adjust as necessary)
     $segments1 = $line1 -split '\s+'
@@ -29,10 +35,10 @@ for ($i = 0; $i -lt [math]::Max($file1Lines.Length, $file2Lines.Length); $i++) {
         $segment1 = if ($j -lt $segments1.Length) { $segments1[$j] } else { "" }
         $segment2 = if ($j -lt $segments2.Length) { $segments2[$j] } else { "" }
 
+        # Skip identical segments by comparing their hashes
         if ($segment1 -ne $segment2) {
             $differencesFound = $true
-            # Log difference details with line number, segment number, and file
-            $differenceDetails = "Difference found at Line $($i+1), Segment $($j+1):`n" +
+            $differenceDetails = "Difference found at Line $lineNumber, Segment $($j+1):`n" +
                                  "File 1: $segment1`n" +
                                  "File 2: $segment2`n" +
                                  "-------------------------------------------"
@@ -41,6 +47,10 @@ for ($i = 0; $i -lt [math]::Max($file1Lines.Length, $file2Lines.Length); $i++) {
         }
     }
 }
+
+# Close StreamReaders
+$reader1.Close()
+$reader2.Close()
 
 # Record the end time and calculate the duration
 $endTime = Get-Date
