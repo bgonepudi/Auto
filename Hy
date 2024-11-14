@@ -1,8 +1,6 @@
 # Define file paths
 $file1Path = "C:\path\to\file1.txt"
 $file2Path = "C:\path\to\file2.txt"
-$outputFile1Highlighted = "C:\path\to\file1_highlighted.txt"
-$outputFile2Highlighted = "C:\path\to\file2_highlighted.txt"
 $logFile = "C:\path\to\comparison_log_$(Get-Date -Format 'yyyyMMdd_HHmmss').txt"
 
 # Record the start time
@@ -13,112 +11,61 @@ Write-Output "Comparison started at: $startTime"
 $file1Lines = Get-Content -Path $file1Path
 $file2Lines = Get-Content -Path $file2Path
 
-# Prepare arrays for highlighted content
-$file1Highlighted = @()
-$file2Highlighted = @()
+# Prepare log output
+$logContent = @()
 $differencesFound = $false
 
-# Function to highlight mismatched segments within a line
-function Highlight-Segments {
-    param ($line1, $line2)
-
-    $highlightedLine1 = ""
-    $highlightedLine2 = ""
-
-    # Convert each line into character arrays for segment-by-segment comparison
-    $chars1 = $line1.ToCharArray()
-    $chars2 = $line2.ToCharArray()
-
-    # Loop through the characters of the longest line
-    $maxLength = [math]::Max($chars1.Length, $chars2.Length)
-    $inMismatch = $false
-
-    for ($i = 0; $i -lt $maxLength; $i++) {
-        # Check if characters at this position match
-        if ($i -lt $chars1.Length -and $i -lt $chars2.Length -and $chars1[$i] -eq $chars2[$i]) {
-            # If ending a mismatch, close the highlight tag
-            if ($inMismatch) {
-                $highlightedLine1 += "[/HIGHLIGHT]"
-                $highlightedLine2 += "[/HIGHLIGHT]"
-                $inMismatch = $false
-            }
-            # Add matching characters
-            $highlightedLine1 += $chars1[$i]
-            $highlightedLine2 += $chars2[$i]
-        } else {
-            # Start highlighting if entering a mismatch
-            if (-not $inMismatch) {
-                $highlightedLine1 += "[HIGHLIGHT]"
-                $highlightedLine2 += "[HIGHLIGHT]"
-                $inMismatch = $true
-            }
-            # Add mismatched characters or spaces if out of range
-            $highlightedLine1 += if ($i -lt $chars1.Length) { $chars1[$i] } else { " " }
-            $highlightedLine2 += if ($i -lt $chars2.Length) { $chars2[$i] } else { " " }
-        }
-    }
-
-    # Close any remaining open highlight tags
-    if ($inMismatch) {
-        $highlightedLine1 += "[/HIGHLIGHT]"
-        $highlightedLine2 += "[/HIGHLIGHT]"
-    }
-
-    return @($highlightedLine1, $highlightedLine2)
-}
-
-# Compare lines and highlight differences
+# Compare each line and segment
 for ($i = 0; $i -lt [math]::Max($file1Lines.Length, $file2Lines.Length); $i++) {
     $line1 = if ($i -lt $file1Lines.Length) { $file1Lines[$i] } else { "" }
     $line2 = if ($i -lt $file2Lines.Length) { $file2Lines[$i] } else { "" }
 
-    if ($line1 -ne $line2) {
-        $differencesFound = $true
-        $highlightedLines = Highlight-Segments -line1 $line1 -line2 $line2
-        $file1Highlighted += $highlightedLines[0]
-        $file2Highlighted += $highlightedLines[1]
-    } else {
-        $file1Highlighted += $line1
-        $file2Highlighted += $line2
+    # Split lines into segments (assuming space as a delimiter, adjust as necessary)
+    $segments1 = $line1 -split '\s+'
+    $segments2 = $line2 -split '\s+'
+    
+    # Compare each segment in the line
+    for ($j = 0; $j -lt [math]::Max($segments1.Length, $segments2.Length); $j++) {
+        $segment1 = if ($j -lt $segments1.Length) { $segments1[$j] } else { "" }
+        $segment2 = if ($j -lt $segments2.Length) { $segments2[$j] } else { "" }
+
+        if ($segment1 -ne $segment2) {
+            $differencesFound = $true
+            # Log difference details with line number, segment number, and file
+            $differenceDetails = "Difference found at Line $($i+1), Segment $($j+1):`n" +
+                                 "File 1: $segment1`n" +
+                                 "File 2: $segment2`n" +
+                                 "-------------------------------------------"
+            $logContent += $differenceDetails
+            Write-Output $differenceDetails  # Output to console
+        }
     }
 }
-
-# Save highlighted content to new output files
-$file1Highlighted | Set-Content -Path $outputFile1Highlighted
-$file2Highlighted | Set-Content -Path $outputFile2Highlighted
 
 # Record the end time and calculate the duration
 $endTime = Get-Date
 $duration = $endTime - $startTime
 
-# Write log information
+# Log overall result
 if ($differencesFound) {
     $differenceMessage = "Differences found between files."
 } else {
     $differenceMessage = "No differences found between files."
 }
 
-# Log file creation
-$logContent = @(
-    "Comparison Log - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
-    "-------------------------------------------",
-    "Start Time: $startTime",
-    "End Time: $endTime",
-    "Duration: $duration",
-    $differenceMessage,
-    "Highlighted output saved to:",
-    $outputFile1Highlighted,
-    $outputFile2Highlighted
-)
+# Add summary to the log
+$logContent += "Comparison Log - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+$logContent += "Start Time: $startTime"
+$logContent += "End Time: $endTime"
+$logContent += "Duration: $duration"
+$logContent += $differenceMessage
 
+# Save log to file
 $logContent | Set-Content -Path $logFile
 
-# Output completion message with times and log details
+# Output summary to console
 Write-Output $differenceMessage
 Write-Output "Log saved to: $logFile"
 Write-Output "Start Time: $startTime"
 Write-Output "End Time: $endTime"
 Write-Output "Duration: $duration"
-Write-Output "Highlighted files saved to:"
-Write-Output $outputFile1Highlighted
-Write-Output $outputFile2Highlighted
