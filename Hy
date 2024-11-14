@@ -18,23 +18,68 @@ $file1Highlighted = @()
 $file2Highlighted = @()
 $differencesFound = $false
 
-# Highlight differences in file1
-foreach ($line in $file1Lines) {
-    if ($line -notin $file2Lines) {
-        $file1Highlighted += "[HIGHLIGHT] $line"
-        $differencesFound = $true
-    } else {
-        $file1Highlighted += $line
+# Function to highlight mismatched segments within a line
+function Highlight-Segments {
+    param ($line1, $line2)
+
+    $highlightedLine1 = ""
+    $highlightedLine2 = ""
+
+    # Convert each line into character arrays for segment-by-segment comparison
+    $chars1 = $line1.ToCharArray()
+    $chars2 = $line2.ToCharArray()
+
+    # Loop through the characters of the longest line
+    $maxLength = [math]::Max($chars1.Length, $chars2.Length)
+    $inMismatch = $false
+
+    for ($i = 0; $i -lt $maxLength; $i++) {
+        # Check if characters at this position match
+        if ($i -lt $chars1.Length -and $i -lt $chars2.Length -and $chars1[$i] -eq $chars2[$i]) {
+            # If ending a mismatch, close the highlight tag
+            if ($inMismatch) {
+                $highlightedLine1 += "[/HIGHLIGHT]"
+                $highlightedLine2 += "[/HIGHLIGHT]"
+                $inMismatch = $false
+            }
+            # Add matching characters
+            $highlightedLine1 += $chars1[$i]
+            $highlightedLine2 += $chars2[$i]
+        } else {
+            # Start highlighting if entering a mismatch
+            if (-not $inMismatch) {
+                $highlightedLine1 += "[HIGHLIGHT]"
+                $highlightedLine2 += "[HIGHLIGHT]"
+                $inMismatch = $true
+            }
+            # Add mismatched characters or spaces if out of range
+            $highlightedLine1 += if ($i -lt $chars1.Length) { $chars1[$i] } else { " " }
+            $highlightedLine2 += if ($i -lt $chars2.Length) { $chars2[$i] } else { " " }
+        }
     }
+
+    # Close any remaining open highlight tags
+    if ($inMismatch) {
+        $highlightedLine1 += "[/HIGHLIGHT]"
+        $highlightedLine2 += "[/HIGHLIGHT]"
+    }
+
+    return @($highlightedLine1, $highlightedLine2)
 }
 
-# Highlight differences in file2
-foreach ($line in $file2Lines) {
-    if ($line -notin $file1Lines) {
-        $file2Highlighted += "[HIGHLIGHT] $line"
+# Compare lines and highlight differences
+for ($i = 0; $i -lt [math]::Max($file1Lines.Length, $file2Lines.Length); $i++) {
+    $line1 = if ($i -lt $file1Lines.Length) { $file1Lines[$i] } else { "" }
+    $line2 = if ($i -lt $file2Lines.Length) { $file2Lines[$i] } else { "" }
+
+    if ($line1 -ne $line2) {
         $differencesFound = $true
+        $highlightedLines = Highlight-Segments -line1 $line1 -line2 $line2
+        $file1Highlighted += $highlightedLines[0]
+        $file2Highlighted += $highlightedLines[1]
     } else {
-        $file2Highlighted += $line
+        $file1Highlighted += $line1
+        $file2Highlighted += $line2
     }
 }
 
