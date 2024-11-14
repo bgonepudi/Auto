@@ -1,1 +1,79 @@
-=IF(ISNUMBER(SEARCH("day", F2)), LEFT(F2, FIND("day", F2)-1)*1440 + MID(F2, FIND("day", F2)+4, FIND("hr", F2)-FIND("day", F2)-4)*60, MID(F2, 1, FIND("hr", F2)-1)*60)
+# Define file paths
+$file1Path = "C:\path\to\file1.txt"
+$file2Path = "C:\path\to\file2.txt"
+$outputFile1Highlighted = "C:\path\to\file1_highlighted.txt"
+$outputFile2Highlighted = "C:\path\to\file2_highlighted.txt"
+$logFile = "C:\path\to\comparison_log_$(Get-Date -Format 'yyyyMMdd_HHmmss').txt"
+
+# Record the start time
+$startTime = Get-Date
+Write-Output "Comparison started at: $startTime"
+
+# Read the contents of each file into arrays
+$file1Lines = Get-Content -Path $file1Path
+$file2Lines = Get-Content -Path $file2Path
+
+# Prepare arrays for highlighted content
+$file1Highlighted = @()
+$file2Highlighted = @()
+$differencesFound = $false
+
+# Highlight differences in file1
+foreach ($line in $file1Lines) {
+    if ($line -notin $file2Lines) {
+        $file1Highlighted += "[HIGHLIGHT] $line"
+        $differencesFound = $true
+    } else {
+        $file1Highlighted += $line
+    }
+}
+
+# Highlight differences in file2
+foreach ($line in $file2Lines) {
+    if ($line -notin $file1Lines) {
+        $file2Highlighted += "[HIGHLIGHT] $line"
+        $differencesFound = $true
+    } else {
+        $file2Highlighted += $line
+    }
+}
+
+# Save highlighted content to new output files
+$file1Highlighted | Set-Content -Path $outputFile1Highlighted
+$file2Highlighted | Set-Content -Path $outputFile2Highlighted
+
+# Record the end time and calculate the duration
+$endTime = Get-Date
+$duration = $endTime - $startTime
+
+# Write log information
+if ($differencesFound) {
+    $differenceMessage = "Differences found between files."
+} else {
+    $differenceMessage = "No differences found between files."
+}
+
+# Log file creation
+$logContent = @(
+    "Comparison Log - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')",
+    "-------------------------------------------",
+    "Start Time: $startTime",
+    "End Time: $endTime",
+    "Duration: $duration",
+    $differenceMessage,
+    "Highlighted output saved to:",
+    $outputFile1Highlighted,
+    $outputFile2Highlighted
+)
+
+$logContent | Set-Content -Path $logFile
+
+# Output completion message with times and log details
+Write-Output $differenceMessage
+Write-Output "Log saved to: $logFile"
+Write-Output "Start Time: $startTime"
+Write-Output "End Time: $endTime"
+Write-Output "Duration: $duration"
+Write-Output "Highlighted files saved to:"
+Write-Output $outputFile1Highlighted
+Write-Output $outputFile2Highlighted
