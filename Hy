@@ -1,81 +1,78 @@
-# Define file paths
-$file1Path = "C:\path\to\file1.txt"
-$file2Path = "C:\path\to\file2.txt"
-$logFile = "C:\path\to\comparison_log_$(Get-Date -Format 'yyyyMMdd_HHmmss').txt"
+param (
+    [string]$filePath1 = "Path\To\File1.txt",
+    [string]$filePath2 = "Path\To\File2.txt",
+    [string]$logFilePath = "ComparisonLog.txt"
+)
 
-# Record the start time
-$startTime = Get-Date
-Write-Output "Comparison started at: $startTime"
-
-# Prepare log output
-$logContent = @()
+# Initialize variables
+$differenceDetails = ""
 $differencesFound = $false
+$startTime = Get-Date
 
-# Use StreamReader to read files line-by-line
-$reader1 = [System.IO.StreamReader]::new($file1Path)
-$reader2 = [System.IO.StreamReader]::new($file2Path)
+# Open files for streaming
+$file1Reader = [System.IO.StreamReader]::new($filePath1)
+$file2Reader = [System.IO.StreamReader]::new($filePath2)
 
-# Initialize line counter
-$lineNumber = 0
+try {
+    $lineNumber = 0
+    while (-not $file1Reader.EndOfStream -or -not $file2Reader.EndOfStream) {
+        $lineNumber++
 
-# Read lines in parallel
-while (($line1 = $reader1.ReadLine()) -ne $null -or ($line2 = $reader2.ReadLine()) -ne $null) {
-    $lineNumber++
-    
-    # Default values if one file is shorter
-    if ($line1 -eq $null) { $line1 = "" }
-    if ($line2 -eq $null) { $line2 = "" }
+        # Read current lines or set to empty if one file has ended
+        $line1 = if (-not $file1Reader.EndOfStream) { $file1Reader.ReadLine().Trim() } else { "" }
+        $line2 = if (-not $file2Reader.EndOfStream) { $file2Reader.ReadLine().Trim() } else { "" }
 
-    # Split lines into segments (assuming space as a delimiter, adjust as necessary)
-    $segments1 = $line1 -split '\s+'
-    $segments2 = $line2 -split '\s+'
-    
-    # Compare each segment in the line
-    for ($j = 0; $j -lt [math]::Max($segments1.Length, $segments2.Length); $j++) {
-        $segment1 = if ($j -lt $segments1.Length) { $segments1[$j] } else { "" }
-        $segment2 = if ($j -lt $segments2.Length) { $segments2[$j] } else { "" }
-
-        # Skip identical segments by comparing their hashes
-        if ($segment1 -ne $segment2) {
+        # Compare lines
+        if ($line1 -ne $line2) {
             $differencesFound = $true
-            $differenceDetails = "Difference found at Line $lineNumber, Segment $($j+1):`n" +
-                                 "File 1: $segment1`n" +
-                                 "File 2: $segment2`n" +
-                                 "-------------------------------------------"
-            $logContent += $differenceDetails
-            Write-Output $differenceDetails  # Output to console
+
+            # Split lines into segments by whitespace
+            $segments1 = $line1 -split "\s+"
+            $segments2 = $line2 -split "\s+"
+
+            # Compare segments within the lines
+            for ($j = 0; $j -lt [math]::Max($segments1.Length, $segments2.Length); $j++) {
+                $segment1 = if ($j -lt $segments1.Length) { $segments1[$j].Trim() } else { "" }
+                $segment2 = if ($j -lt $segments2.Length) { $segments2[$j].Trim() } else { "" }
+
+                if ($segment1 -ne $segment2) {
+                    $differenceDetails += "Difference found at Line $lineNumber, Segment $($j + 1):`n"
+                    $differenceDetails += "File 1: `$segment1`n"
+                    $differenceDetails += "File 2: `$segment2`n"
+                    $differenceDetails += "---------------------------------------------`n"
+                }
+            }
         }
     }
 }
+finally {
+    # Close file readers
+    $file1Reader.Close()
+    $file2Reader.Close()
+}
 
-# Close StreamReaders
-$reader1.Close()
-$reader2.Close()
+# Log differences or indicate no differences
+if ($differencesFound) {
+    Write-Output "Differences found between files:"
+    Write-Output $differenceDetails
+} else {
+    Write-Output "No differences found between files."
+}
 
-# Record the end time and calculate the duration
+# Record end time and duration
 $endTime = Get-Date
 $duration = $endTime - $startTime
 
-# Log overall result
-if ($differencesFound) {
-    $differenceMessage = "Differences found between files."
-} else {
-    $differenceMessage = "No differences found between files."
-}
+# Log comparison summary
+$logContent = @"
+Comparison Log - $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 
-# Add summary to the log
-$logContent += "Comparison Log - $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-$logContent += "Start Time: $startTime"
-$logContent += "End Time: $endTime"
-$logContent += "Duration: $duration"
-$logContent += $differenceMessage
+Start Time: $startTime
+End Time: $endTime
+Duration: $duration
 
-# Save log to file
-$logContent | Set-Content -Path $logFile
+$differenceDetails
+"@
+Set-Content -Path $logFilePath -Value $logContent
 
-# Output summary to console
-Write-Output $differenceMessage
-Write-Output "Log saved to: $logFile"
-Write-Output "Start Time: $startTime"
-Write-Output "End Time: $endTime"
-Write-Output "Duration: $duration"
+Write-Output "Comparison completed. Log saved to $logFilePath"
