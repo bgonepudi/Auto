@@ -41,8 +41,8 @@ try {
 
                 if ($segment1 -ne $segment2) {
                     $differenceDetails += "Difference found at Line $lineNumber, Segment $($j + 1):`n"
-                    $differenceDetails += "${fileName1}: `${segment1}`n"
-                    $differenceDetails += "${fileName2}: `${segment2}`n"
+                    $differenceDetails += "${fileName1}: $segment1`n"
+                    $differenceDetails += "${fileName2}: $segment2`n"
                     $differenceDetails += "---------------------------------------------`n"
                 }
             }
