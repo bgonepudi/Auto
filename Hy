@@ -1,7 +1,12 @@
 param (
     [string]$filePath1 = "Path\To\File1.txt",
     [string]$filePath2 = "Path\To\File2.txt",
-    [string]$logFilePath = "ComparisonLog.txt"
+    [string]$logFilePath = "ComparisonLog.txt",
+    [string]$smtpServer = "smtp.your-email-provider.com",  # Replace with your SMTP server
+    [string]$smtpPort = "587",                            # Replace with your SMTP port
+    [string]$fromEmail = "your-email@example.com",        # Replace with your email address
+    [string]$toEmail = "recipient@example.com",           # Replace with recipient's email address
+    [string]$emailSubject = "File Comparison Results"
 )
 
 # Get file names from the paths
@@ -55,19 +60,11 @@ finally {
     $file2Reader.Close()
 }
 
-# Log differences or indicate no differences
-if ($differencesFound) {
-    Write-Output "Differences found between files:"
-    Write-Output $differenceDetails
-} else {
-    Write-Output "No differences found between ${fileName1} and ${fileName2}."
-}
-
 # Record end time and duration
 $endTime = Get-Date
 $duration = $endTime - $startTime
 
-# Log comparison summary
+# Generate log content
 $logContent = @"
 Comparison Log - $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
 
@@ -83,4 +80,30 @@ $differenceDetails
 "@
 Set-Content -Path $logFilePath -Value $logContent
 
-Write-Output "Comparison completed. Log saved to $logFilePath"
+# Email Body Content
+$emailBody = if ($differencesFound) {
+    "Differences were found between the files. See the attached log for details."
+} else {
+    "No differences were found between ${fileName1} and ${fileName2}."
+}
+
+# Send email with the log file as attachment
+try {
+    Send-MailMessage -From $fromEmail -To $toEmail -Subject $emailSubject `
+        -Body $emailBody -SmtpServer $smtpServer -Port $smtpPort -UseSsl `
+        -Attachments $logFilePath -Credential (Get-Credential) -BodyAsHtml
+
+    Write-Output "Email sent successfully to $toEmail."
+} catch {
+    Write-Output "Failed to send email. Error: $_"
+}
+
+# Final Output
+if ($differencesFound) {
+    Write-Output "Differences found between files."
+    Write-Output $differenceDetails
+} else {
+    Write-Output "No differences found between ${fileName1} and ${fileName2}."
+}
+
+Write-Output "Comparison completed. Log saved to $logFilePath."
