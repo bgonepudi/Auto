@@ -4,6 +4,10 @@ param (
     [string]$logFilePath = "ComparisonLog.txt"
 )
 
+# Get file names from the paths
+$fileName1 = [System.IO.Path]::GetFileName($filePath1)
+$fileName2 = [System.IO.Path]::GetFileName($filePath2)
+
 # Initialize variables
 $differenceDetails = ""
 $differencesFound = $false
@@ -24,7 +28,7 @@ try {
 
         # Compare lines
         if ($line1 -ne $line2) {
-            $differencesFound = $true
+            $differencesFound = $true  # Update this variable when a difference is found
 
             # Split lines into segments by whitespace
             $segments1 = $line1 -split "\s+"
@@ -37,8 +41,8 @@ try {
 
                 if ($segment1 -ne $segment2) {
                     $differenceDetails += "Difference found at Line $lineNumber, Segment $($j + 1):`n"
-                    $differenceDetails += "File 1: `$segment1`n"
-                    $differenceDetails += "File 2: `$segment2`n"
+                    $differenceDetails += "$fileName1: `$segment1`n"
+                    $differenceDetails += "$fileName2: `$segment2`n"
                     $differenceDetails += "---------------------------------------------`n"
                 }
             }
@@ -56,7 +60,7 @@ if ($differencesFound) {
     Write-Output "Differences found between files:"
     Write-Output $differenceDetails
 } else {
-    Write-Output "No differences found between files."
+    Write-Output "No differences found between $fileName1 and $fileName2."
 }
 
 # Record end time and duration
@@ -66,6 +70,10 @@ $duration = $endTime - $startTime
 # Log comparison summary
 $logContent = @"
 Comparison Log - $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
+
+Files Compared:
+$fileName1
+$fileName2
 
 Start Time: $startTime
 End Time: $endTime
