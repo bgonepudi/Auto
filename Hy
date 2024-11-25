@@ -1,140 +1,17 @@
-param (
-    [string]$filePath1 = "Path\To\File1.txt",
-    [string]$filePath2 = "Path\To\File2.txt",
-    [string]$logFilePath = "ComparisonLog.txt",
-    [string]$smtpServer = "smtp.your-email-provider.com",  # Replace with your SMTP server
-    [string]$smtpPort = "587",                            # Replace with your SMTP port
-    [string]$fromEmail = "your-email@example.com",        # Replace with your email address
-    [string]$toEmail = "recipient@example.com",           # Replace with recipient's email address
-    [string]$emailSubject = "File Comparison Results"
-)
-
-# Get file names from the paths
-$fileName1 = [System.IO.Path]::GetFileName($filePath1)
-$fileName2 = [System.IO.Path]::GetFileName($filePath2)
-
-# Initialize variables
-$differenceDetails = ""
-$differencesFound = $false
-$totalSegments = 0
-$passedSegments = 0
-$failedSegments = 0
-$startTime = Get-Date
-
-# Open files for streaming
-$file1Reader = [System.IO.StreamReader]::new($filePath1)
-$file2Reader = [System.IO.StreamReader]::new($filePath2)
-
-try {
-    $lineNumber = 0
-    while (-not $file1Reader.EndOfStream -or -not $file2Reader.EndOfStream) {
-        $lineNumber++
-
-        # Read current lines or set to empty if one file has ended
-        $line1 = if (-not $file1Reader.EndOfStream) { $file1Reader.ReadLine().Trim() } else { "" }
-        $line2 = if (-not $file2Reader.EndOfStream) { $file2Reader.ReadLine().Trim() } else { "" }
-
-        # Compare lines
-        if ($line1 -ne $line2) {
-            $differencesFound = $true  # Update this variable when a difference is found
-
-            # Split lines into segments by whitespace
-            $segments1 = $line1 -split "\s+"
-            $segments2 = $line2 -split "\s+"
-
-            # Compare segments within the lines
-            for ($j = 0; $j -lt [math]::Max($segments1.Length, $segments2.Length); $j++) {
-                $segment1 = if ($j -lt $segments1.Length) { $segments1[$j].Trim() } else { "" }
-                $segment2 = if ($j -lt $segments2.Length) { $segments2[$j].Trim() } else { "" }
-
-                $totalSegments++
-                if ($segment1 -eq $segment2) {
-                    $passedSegments++
-                } else {
-                    $failedSegments++
-                    $differenceDetails += "Difference found at Line $lineNumber, Segment $($j + 1):`n"
-                    $differenceDetails += "${fileName1}: $segment1`n"
-                    $differenceDetails += "${fileName2}: $segment2`n"
-                    $differenceDetails += "---------------------------------------------`n"
-                }
-            }
-        } else {
-            # Count the segments as passed if lines match
-            $segments = $line1 -split "\s+"
-            $totalSegments += $segments.Length
-            $passedSegments += $segments.Length
-        }
-    }
-}
-finally {
-    # Close file readers
-    $file1Reader.Close()
-    $file2Reader.Close()
-}
-
-# Record end time and duration
-$endTime = Get-Date
-$duration = $endTime - $startTime
-
-# Generate log content
-$logContent = @"
-Comparison Log - $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
-
-Files Compared:
-${fileName1}
-${fileName2}
-
-Start Time: $startTime
-End Time: $endTime
-Duration: $duration
-
-Test Summary:
-- Total Segments Compared: $totalSegments
-- Segments Passed: $passedSegments
-- Segments Failed: $failedSegments
-
-$differenceDetails
+$Body = @"
+<html>
+<body>
+    <p>Test Summary:</p>
+    <ul>
+        <li>Total Segments Compared: $totalSegments</li>
+        <li>Segments Passed: $passedSegments</li>
+        <li>Segments Failed: $failedSegments</li>
+        <li>Overall Status: $overallStatus</li>
+    </ul>
+</body>
+</html>
 "@
-Set-Content -Path $logFilePath -Value $logContent
 
-# Email Body Content
-$emailBody = if ($differencesFound) {
-    "Differences were found between the files. See the attached log for details.<br>
-    <b>Test Summary:</b><br>
-    - Total Segments Compared: $totalSegments<br>
-    - Segments Passed: $passedSegments<br>
-    - Segments Failed: $failedSegments<br>"
-} else {
-    "No differences were found between ${fileName1} and ${fileName2}.<br>
-    <b>Test Summary:</b><br>
-    - Total Segments Compared: $totalSegments<br>
-    - Segments Passed: $passedSegments<br>
-    - Segments Failed: $failedSegments<br>"
-}
-
-# Send email with the log file as attachment
-try {
-    Send-MailMessage -From $fromEmail -To $toEmail -Subject $emailSubject `
-        -Body $emailBody -SmtpServer $smtpServer -Port $smtpPort -UseSsl `
-        -Attachments $logFilePath -Credential (Get-Credential) -BodyAsHtml
-
-    Write-Output "Email sent successfully to $toEmail."
-} catch {
-    Write-Output "Failed to send email. Error: $_"
-}
-
-# Final Output
-if ($differencesFound) {
-    Write-Output "Differences found between files."
-    Write-Output "Total Segments Compared: $totalSegments"
-    Write-Output "Segments Passed: $passedSegments"
-    Write-Output "Segments Failed: $failedSegments"
-    Write-Output $differenceDetails
-} else {
-    Write-Output "No differences found between ${fileName1} and ${fileName2}."
-    Write-Output "Total Segments Compared: $totalSegments"
-    Write-Output "Segments Passed: $passedSegments"
-    Write-Output "Segments Failed: $failedSegments"
-}
-
-Write-Output "Comparison completed. Log saved to $logFilePath."
+Send-MailMessage -SmtpServer $smtpServer -Port $smtpPort -To $toEmail `
+    -From $fromEmail -Subject $emailSubject -Body $Body -BodyAsHtml `
+    -Attachments $logFilePath
