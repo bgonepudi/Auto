@@ -16,6 +16,9 @@ $fileName2 = [System.IO.Path]::GetFileName($filePath2)
 # Initialize variables
 $differenceDetails = ""
 $differencesFound = $false
+$totalSegments = 0
+$passedSegments = 0
+$failedSegments = 0
 $startTime = Get-Date
 
 # Open files for streaming
@@ -44,13 +47,22 @@ try {
                 $segment1 = if ($j -lt $segments1.Length) { $segments1[$j].Trim() } else { "" }
                 $segment2 = if ($j -lt $segments2.Length) { $segments2[$j].Trim() } else { "" }
 
-                if ($segment1 -ne $segment2) {
+                $totalSegments++
+                if ($segment1 -eq $segment2) {
+                    $passedSegments++
+                } else {
+                    $failedSegments++
                     $differenceDetails += "Difference found at Line $lineNumber, Segment $($j + 1):`n"
                     $differenceDetails += "${fileName1}: $segment1`n"
                     $differenceDetails += "${fileName2}: $segment2`n"
                     $differenceDetails += "---------------------------------------------`n"
                 }
             }
+        } else {
+            # Count the segments as passed if lines match
+            $segments = $line1 -split "\s+"
+            $totalSegments += $segments.Length
+            $passedSegments += $segments.Length
         }
     }
 }
@@ -76,15 +88,28 @@ Start Time: $startTime
 End Time: $endTime
 Duration: $duration
 
+Test Summary:
+- Total Segments Compared: $totalSegments
+- Segments Passed: $passedSegments
+- Segments Failed: $failedSegments
+
 $differenceDetails
 "@
 Set-Content -Path $logFilePath -Value $logContent
 
 # Email Body Content
 $emailBody = if ($differencesFound) {
-    "Differences were found between the files. See the attached log for details."
+    "Differences were found between the files. See the attached log for details.<br>
+    <b>Test Summary:</b><br>
+    - Total Segments Compared: $totalSegments<br>
+    - Segments Passed: $passedSegments<br>
+    - Segments Failed: $failedSegments<br>"
 } else {
-    "No differences were found between ${fileName1} and ${fileName2}."
+    "No differences were found between ${fileName1} and ${fileName2}.<br>
+    <b>Test Summary:</b><br>
+    - Total Segments Compared: $totalSegments<br>
+    - Segments Passed: $passedSegments<br>
+    - Segments Failed: $failedSegments<br>"
 }
 
 # Send email with the log file as attachment
@@ -101,9 +126,15 @@ try {
 # Final Output
 if ($differencesFound) {
     Write-Output "Differences found between files."
+    Write-Output "Total Segments Compared: $totalSegments"
+    Write-Output "Segments Passed: $passedSegments"
+    Write-Output "Segments Failed: $failedSegments"
     Write-Output $differenceDetails
 } else {
     Write-Output "No differences found between ${fileName1} and ${fileName2}."
+    Write-Output "Total Segments Compared: $totalSegments"
+    Write-Output "Segments Passed: $passedSegments"
+    Write-Output "Segments Failed: $failedSegments"
 }
 
 Write-Output "Comparison completed. Log saved to $logFilePath."
