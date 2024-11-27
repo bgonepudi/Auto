@@ -1,12 +1,1 @@
-Task ID,Phase,Task Description,Owner,Target Date,Dependencies,Status
-1,Setup and Environment Prep,Complete Jenkins VM setup and testing with 9 VMs,DevOps Team,10/4,Availability of VMs and Jenkins tools,In Progress
-2,Setup and Environment Prep,Optimize the Peppermill framework for parallel execution,QA Automation Lead,10/6,Framework setup,Not Started
-3,Testing Execution,Execute Round 1 regression tests across 9 VMs (48 hrs),QA Team,10/21,Jenkins setup completion,Not Started
-4,Testing Execution,Review and analyze Round 1 results,QA Manager,10/22,Round 1 execution completion,Not Started
-5,Testing Execution,Optimize test scripts and modify Jenkins job configurations,QA Automation Team,10/25,Round 1 results review,Not Started
-6,Testing Execution,Determine if additional VMs are required,Project Manager,10/30,Script optimization results,Not Started
-7,Final Execution and Go-Live,Execute Round 2 regression tests with enhanced scripts,QA Team,11/4,Script optimization completion,Not Started
-8,Final Execution and Go-Live,Review Round 2 results and prepare final report,QA Manager,11/7,Round 2 execution completion,Not Started
-9,Final Execution and Go-Live,Finalize go-live decision (if no additional VMs needed),Project Manager,11/10,Final result validation,Not Started
-10,Final Execution and Go-Live,Set up and configure additional VMs (if required),DevOps Team,11/15,RFC approval and VM setup,Not Started
-11,Ongoing Risk Management,Conduct weekly reviews to track progress and resolve blockers,Project Manager,Weekly,Weekly status updates,Ongoing
+="Sprint" & ROUNDUP((DAY([Created])/14),0) & " - " & TEXT([Created],"MM-dd") & " - " & TEXT([Created]+13,"MM-dd")
