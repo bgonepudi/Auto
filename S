@@ -17,15 +17,36 @@ function Log-Message {
     Add-Content -Path $logFilePath -Value $logEntry
 }
 
-# Function to check if a program is installed
-function Is-ProgramInstalled {
-    param (
-        [string]$ProgramName
-    )
-    $key = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"
-    $isInstalled = Get-ItemProperty -Path $key -ErrorAction SilentlyContinue |
-                    Where-Object { $_.DisplayName -like "*$ProgramName*" }
-    return $isInstalled -ne $null
+# Function to check if Java is installed
+function Is-JavaInstalled {
+    # Check Registry
+    $keyPath = "HKLM:\Software\JavaSoft\Java Runtime Environment"
+    if (Test-Path $keyPath) {
+        $javaVersion = (Get-ItemProperty -Path $keyPath).CurrentVersion
+        Log-Message "Java is installed. Current version: $javaVersion (Registry)" "INFO"
+        return $true
+    }
+
+    # Check Environment Variable
+    $javaHome = [System.Environment]::GetEnvironmentVariable("JAVA_HOME")
+    if ($javaHome) {
+        Log-Message "Java is installed. JAVA_HOME: $javaHome (Environment Variable)" "INFO"
+        return $true
+    }
+
+    # Check Command
+    try {
+        $javaVersion = & java -version 2>&1
+        if ($javaVersion -match "version") {
+            Log-Message "Java is installed. Version details: $javaVersion (Command)" "INFO"
+            return $true
+        }
+    } catch {
+        # Ignore errors for the command check
+    }
+
+    Log-Message "Java is not installed." "WARNING"
+    return $false
 }
 
 # Function to install a tool
@@ -110,7 +131,14 @@ foreach ($tool in $tools) {
     $arguments = $tool.Arguments
 
     Log-Message "Checking if $name is installed..." "INFO"
-    if (-not (Is-ProgramInstalled -ProgramName $name)) {
+
+    # Special handling for Java
+    if ($name -eq "Java JDK") {
+        if (Is-JavaInstalled) {
+            Log-Message "$name is already installed. Skipping..." "INFO"
+            continue
+        }
+    } elseif (-not (Is-ProgramInstalled -ProgramName $name)) {
         Log-Message "$name is not installed. Proceeding with installation..." "INFO"
         $installStatus = Install-Tool -Name $name -Path $path -Arguments $arguments
         if ($installStatus) {
