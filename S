@@ -1,1 +1,104 @@
 
+# Define tool paths
+$tools = @(
+    @{
+        Name = "IntelliJ IDEA";
+        Path = "\\cqgvltwarap021\PepperWareED\Software\ideaIC-2022.1.exe";
+        Arguments = "/S /D=C:\IntelliJ"
+    },
+    @{
+        Name = "Java JDK";
+        Path = "\\cqgvltwarap021\PepperWareED\tools\03192014\jdk-11.0.21_windows-x64_bin.exe";
+        Arguments = "/quiet"
+    },
+    @{
+        Name = "Chrome";
+        Path = "\\cqgvltwarap021\PepperWareED\tools\ChromeStandaloneSetup64_81.0.4044.92.exe";
+        Arguments = "/silent /install"
+    },
+    @{
+        Name = "Git";
+        Path = "\\cqgvltwarap021\PepperWareED\tools\Git-2.35.1.2-64-bit.exe";
+        Arguments = "/SILENT"
+    },
+    @{
+        Name = "TortoiseGit";
+        Path = "\\cqgvltwarap021\PepperWareED\tools\TortoiseGit-2.7.0.0-64bit.msi";
+        Arguments = "/quiet /norestart"
+    },
+    @{
+        Name = "GitHub Desktop";
+        Path = "\\cqgvltwarap021\PepperWareED\tools\GitHubDesktopSetup.exe";
+        Arguments = "/S"
+    }
+)
+
+# Define the log file path
+$logFilePath = "C:\ta_install_log.txt"
+
+# Log function
+function Log-Message {
+    param (
+        [string]$Message
+    )
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $logEntry = "$timestamp $Message"
+    Add-Content -Path $logFilePath -Value $logEntry
+    Write-Host $Message
+}
+
+# Function to check if a program is installed
+function Is-ProgramInstalled {
+    param (
+        [string]$ProgramName
+    )
+    $key = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"
+    $isInstalled = Get-ItemProperty -Path $key -ErrorAction SilentlyContinue |
+                    Where-Object { $_.DisplayName -like "*$ProgramName*" }
+    return $isInstalled -ne $null
+}
+
+# Function to install a tool
+function Install-Tool {
+    param (
+        [string]$Name,
+        [string]$Path,
+        [string]$Arguments
+    )
+    if (-not (Test-Path $Path)) {
+        Log-Message "ERROR: Installer path not found: $Path"
+        return $false
+    }
+    
+    Log-Message "Installing $Name..."
+    try {
+        Start-Process -FilePath $Path -ArgumentList $Arguments -NoNewWindow -Wait
+        Log-Message "$Name installation completed successfully."
+        return $true
+    } catch {
+        Log-Message "Failed to install $Name: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+# Main installation loop
+foreach ($tool in $tools) {
+    $name = $tool.Name
+    $path = $tool.Path
+    $arguments = $tool.Arguments
+
+    Log-Message "Checking if $name is installed..."
+    if (-not (Is-ProgramInstalled -ProgramName $name)) {
+        Log-Message "$name is not installed. Proceeding with installation..."
+        $installStatus = Install-Tool -Name $name -Path $path -Arguments $arguments
+        if ($installStatus) {
+            Log-Message "$name installed successfully."
+        } else {
+            Log-Message "ERROR: Installation failed for $name. Skipping..."
+        }
+    } else {
+        Log-Message "$name is already installed. Skipping..."
+    }
+}
+
+Log-Message "All tools have been processed."
