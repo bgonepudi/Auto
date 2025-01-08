@@ -1,5 +1,68 @@
+# Define log levels and colors
+function Log-Message {
+    param (
+        [string]$Message,
+        [string]$Level = "INFO" # INFO, ERROR, or WARNING
+    )
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    switch ($Level) {
+        "INFO" { $color = "Green" }
+        "ERROR" { $color = "Red" }
+        "WARNING" { $color = "Yellow" }
+        default { $color = "White" }
+    }
+    Write-Host "[$Level] $timestamp - $Message" -ForegroundColor $color
+    # Optionally log to file
+    $logEntry = "[$Level] $timestamp - $Message"
+    Add-Content -Path $logFilePath -Value $logEntry
+}
 
-# Define tool paths
+# Function to check if a program is installed
+function Is-ProgramInstalled {
+    param (
+        [string]$ProgramName
+    )
+    $key = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"
+    $isInstalled = Get-ItemProperty -Path $key -ErrorAction SilentlyContinue |
+                    Where-Object { $_.DisplayName -like "*$ProgramName*" }
+    return $isInstalled -ne $null
+}
+
+# Function to install a tool
+function Install-Tool {
+    param (
+        [string]$Name,
+        [string]$Path,
+        [string]$Arguments
+    )
+    if (-not (Test-Path $Path)) {
+        Log-Message "ERROR: Installer path not found: $Path" "ERROR"
+        return $false
+    }
+
+    Log-Message "Installing $Name..."
+    try {
+        Write-Progress -Activity "Installing $Name" -Status "In Progress" -PercentComplete 50
+        Start-Process -FilePath $Path -ArgumentList $Arguments -NoNewWindow -Wait
+        Write-Progress -Activity "Installing $Name" -Status "Completed" -PercentComplete 100
+        Log-Message "$Name installation completed successfully." "INFO"
+        return $true
+    } catch {
+        Log-Message "Failed to install $Name: $($_.Exception.Message)" "ERROR"
+        return $false
+    }
+}
+
+# Define the log file path
+$logFilePath = "C:\installation_log.txt"
+if (Test-Path $logFilePath) { Remove-Item $logFilePath } # Clear log file
+
+# Header
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "                       Installation Log                     " -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
+
+# Define tools to install
 $tools = @(
     @{
         Name = "IntelliJ IDEA";
@@ -33,72 +96,27 @@ $tools = @(
     }
 )
 
-# Define the log file path
-$logFilePath = "C:\ta_install_log.txt"
-
-# Log function
-function Log-Message {
-    param (
-        [string]$Message
-    )
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $logEntry = "$timestamp $Message"
-    Add-Content -Path $logFilePath -Value $logEntry
-    Write-Host $Message
-}
-
-# Function to check if a program is installed
-function Is-ProgramInstalled {
-    param (
-        [string]$ProgramName
-    )
-    $key = "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"
-    $isInstalled = Get-ItemProperty -Path $key -ErrorAction SilentlyContinue |
-                    Where-Object { $_.DisplayName -like "*$ProgramName*" }
-    return $isInstalled -ne $null
-}
-
-# Function to install a tool
-function Install-Tool {
-    param (
-        [string]$Name,
-        [string]$Path,
-        [string]$Arguments
-    )
-    if (-not (Test-Path $Path)) {
-        Log-Message "ERROR: Installer path not found: $Path"
-        return $false
-    }
-    
-    Log-Message "Installing $Name..."
-    try {
-        Start-Process -FilePath $Path -ArgumentList $Arguments -NoNewWindow -Wait
-        Log-Message "$Name installation completed successfully."
-        return $true
-    } catch {
-        Log-Message "Failed to install $Name: $($_.Exception.Message)"
-        return $false
-    }
-}
-
 # Main installation loop
 foreach ($tool in $tools) {
     $name = $tool.Name
     $path = $tool.Path
     $arguments = $tool.Arguments
 
-    Log-Message "Checking if $name is installed..."
+    Log-Message "Checking if $name is installed..." "INFO"
     if (-not (Is-ProgramInstalled -ProgramName $name)) {
-        Log-Message "$name is not installed. Proceeding with installation..."
+        Log-Message "$name is not installed. Proceeding with installation..." "INFO"
         $installStatus = Install-Tool -Name $name -Path $path -Arguments $arguments
         if ($installStatus) {
-            Log-Message "$name installed successfully."
+            Log-Message "$name installed successfully." "INFO"
         } else {
-            Log-Message "ERROR: Installation failed for $name. Skipping..."
+            Log-Message "Failed to install $name." "ERROR"
         }
     } else {
-        Log-Message "$name is already installed. Skipping..."
+        Log-Message "$name is already installed. Skipping..." "INFO"
     }
 }
 
-Log-Message "All tools have been processed."
+# Footer
+Write-Host "============================================================" -ForegroundColor Cyan
+Write-Host "              Installation Process Completed                " -ForegroundColor Cyan
+Write-Host "============================================================" -ForegroundColor Cyan
