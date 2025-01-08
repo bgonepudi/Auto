@@ -42,8 +42,15 @@ function Install-Tool {
 
     Log-Message "Installing $Name..."
     try {
-        Write-Progress -Activity "Installing $Name" -Status "In Progress" -PercentComplete 50
-        Start-Process -FilePath $Path -ArgumentList $Arguments -NoNewWindow -Wait
+        if ($Path -like "*.msi") {
+            # Use msiexec.exe for MSI files
+            Write-Progress -Activity "Installing $Name" -Status "In Progress" -PercentComplete 50
+            Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$Path`" $Arguments" -NoNewWindow -Wait
+        } else {
+            # Direct execution for EXE files
+            Write-Progress -Activity "Installing $Name" -Status "In Progress" -PercentComplete 50
+            Start-Process -FilePath $Path -ArgumentList $Arguments -NoNewWindow -Wait
+        }
         Write-Progress -Activity "Installing $Name" -Status "Completed" -PercentComplete 100
         Log-Message "$Name installation completed successfully." "INFO"
         return $true
