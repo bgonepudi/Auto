@@ -1,4 +1,37 @@
 
-    COUNT(CASE WHEN date_column >= DATE_TRUNC('month', CURRENT_DATE) THEN 1 ELSE NULL END) AS "Current_Month_Count",
-    COUNT(CASE WHEN date_column >= DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month') 
-               AND date_column < DATE_TRUNC('month', CURRENT_DATE) THEN 1 ELSE NULL END) AS "Previous_Month_Count"
+   # Define SQL Server connection details
+$ServerName = "YourServerName"    # Replace with your SQL Server instance name
+$DatabaseName = "YourDatabase"    # Replace with your database name
+$Query = "SELECT 1 AS TestConnection"  # Simple query to test the connection
+
+# Connection string for Windows Authentication
+$ConnectionString = "Server=$ServerName;Database=$DatabaseName;Integrated Security=True;"
+
+# Create a SQL connection object
+$SqlConnection = New-Object System.Data.SqlClient.SqlConnection
+$SqlConnection.ConnectionString = $ConnectionString
+
+# Open the SQL connection
+try {
+    $SqlConnection.Open()
+    Write-Host "Connection to SQL Server opened successfully."
+} catch {
+    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+    exit
+}
+
+# Execute the SQL query
+$SqlCommand = $SqlConnection.CreateCommand()
+$SqlCommand.CommandText = $Query
+
+# Fetch the results
+$SqlAdapter = New-Object System.Data.SqlClient.SqlDataAdapter $SqlCommand
+$DataSet = New-Object System.Data.DataSet
+$SqlAdapter.Fill($DataSet)
+
+# Close the SQL connection
+$SqlConnection.Close()
+Write-Host "Connection to SQL Server closed."
+
+# Display the results
+$DataSet.Tables[0] | Format-Table -AutoSize
