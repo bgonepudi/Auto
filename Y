@@ -1,37 +1,32 @@
+# Import Excel module
+Import-Module ImportExcel
 
-   # Define SQL Server connection details
-$ServerName = "YourServerName"    # Replace with your SQL Server instance name
-$DatabaseName = "YourDatabase"    # Replace with your database name
-$Query = "SELECT 1 AS TestConnection"  # Simple query to test the connection
+# Define the Excel file path
+$ExcelFilePath = "C:\Path\To\YourExcelFile.xlsx"
 
-# Connection string for Windows Authentication
-$ConnectionString = "Server=$ServerName;Database=$DatabaseName;Integrated Security=True;"
+# Import Excel data
+$ExcelData = Import-Excel -Path $ExcelFilePath
 
-# Create a SQL connection object
-$SqlConnection = New-Object System.Data.SqlClient.SqlConnection
-$SqlConnection.ConnectionString = $ConnectionString
+# Loop through each region and process data
+foreach ($Row in $ExcelData) {
+    $Run = $Row.Run
+    $Region = $Row.REGION
+    $MemberQuery = $Row.'Member Query'
+    $ProviderQuery = $Row.'Provider Query'
+    $ClaimQuery = $Row.'Claim Query'
 
-# Open the SQL connection
-try {
-    $SqlConnection.Open()
-    Write-Host "Connection to SQL Server opened successfully."
-} catch {
-    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
-    exit
+    # Check if the region is set to "Run"
+    if ($Run -eq "Y") {
+        Write-Host "Processing Region: $Region (UAT Data)"
+        Write-Host "Member Query: $MemberQuery"
+        Write-Host "Provider Query: $ProviderQuery"
+        Write-Host "Claim Query: $ClaimQuery"
+
+        # Add logic here to process data for UAT
+
+        Write-Host "Processing Region: $Region (PROD Data)"
+        # Add logic here to process data for PROD
+    } else {
+        Write-Host "Skipping Region: $Region"
+    }
 }
-
-# Execute the SQL query
-$SqlCommand = $SqlConnection.CreateCommand()
-$SqlCommand.CommandText = $Query
-
-# Fetch the results
-$SqlAdapter = New-Object System.Data.SqlClient.SqlDataAdapter $SqlCommand
-$DataSet = New-Object System.Data.DataSet
-$SqlAdapter.Fill($DataSet)
-
-# Close the SQL connection
-$SqlConnection.Close()
-Write-Host "Connection to SQL Server closed."
-
-# Display the results
-$DataSet.Tables[0] | Format-Table -AutoSize
