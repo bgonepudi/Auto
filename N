@@ -1,47 +1,23 @@
-using System;
-using System.Threading;
-
-class Program
-{
-    // ANSI escape codes for color formatting
-    static string GREEN = "\u001b[32m";
-    static string BLUE = "\u001b[34m";
-    static string YELLOW = "\u001b[33m";
-    static string RED = "\u001b[31m";
-    static string RESET = "\u001b[0m";
-
-    static void Main()
-    {
-        // Boxed Header
-        Console.WriteLine("\n##################################################");
-        Console.WriteLine("#       AUTOMATION DATESURE - VALIDATOR TOOL     #");
-        Console.WriteLine("#              Executor: Sathvik                 #");
-        Console.WriteLine("#   Contact: ISQAAutomation@amerihealthcaritas.com   #");
-        Console.WriteLine("##################################################\n");
-
-        Console.WriteLine(GREEN + "[INFO] Started AutomationDateSure" + RESET);
-
-        // Task List
-        string[] tasks = { "Validating Files", "Generating Email", "Sending Email", "Completing Process" };
+Private Sub Worksheet_Change(ByVal Target As Range)
+    Dim xNewValue As String
+    Dim xOldValue As String
+    Dim xDelim As String
+    
+    ' Set the delimiter (comma, semicolon, or new line)
+    xDelim = ", "
+    
+    ' Specify the column or range where the drop-down is applied
+    If Not Intersect(Target, Me.Range("B2:B10")) Is Nothing Then
+        Application.EnableEvents = False
         
-        for (int i = 0; i < tasks.Length; i++)
-        {
-            Thread.Sleep(800); // Simulating processing time
-            
-            int progress = (i + 1) * 100 / tasks.Length;
-            string progressBar = new string('#', progress / 5) + new string(' ', 20 - (progress / 5));
-
-            Console.Write(YELLOW + $"\r[PROCESS] {tasks[i]}... [{progressBar}] {progress}%" + RESET);
-        }
-
-        Console.WriteLine("\n" + GREEN + "[SUCCESS] AutomationDateSure Completed" + RESET);
-
-        // Footer Section
-        Console.WriteLine("\n--------------------------------------------------");
-        Console.WriteLine(BLUE + "🔹 Email sent successfully." + RESET);
-        Console.WriteLine("--------------------------------------------------");
-
-        Console.WriteLine("\nPress any key to close...");
-        Console.ReadKey();
-    }
-}
+        xNewValue = Target.Value
+        xOldValue = Target.OldValue
+        
+        ' Check if previous value exists and append new selection
+        If xOldValue <> "" And xNewValue <> "" Then
+            Target.Value = xOldValue & xDelim & xNewValue
+        End If
+        
+        Application.EnableEvents = True
+    End If
+End Sub
