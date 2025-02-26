@@ -1,42 +1,11 @@
- # Declare string variables
-name = "John Smith"
-address = "101 N. Main Street"
-city = "Anytown"
-state = "TX"
-zip_code = "11111"
-units_taken = "19"
+Here’s your updated introduction post:
 
-# Declare constant numeric variables
-PRICE_PER_UNIT = 100.50
-DISCOUNT_THRESHOLD = 20
-DISCOUNT_AMOUNT = 150
+Hello everyone!
 
-# Convert units_taken to an integer
-intUnitsTaken = int(units_taken)
+My name is Bhavya Gonepudi, and I am excited to be here! I have over 17 years of experience in quality assurance and test automation and currently work in the tech industry with a passion for automation and process improvement.
 
-# Increment units taken by 1
-intUnitsTaken += 1
+Beyond my professional journey, I am a proud mom of two handsome boys, ages 13 and 10, who keep me on my toes! I love exploring new technologies, mentoring aspiring professionals, and balancing work and family life.
 
-# Calculate tuition before discount
-tuition = intUnitsTaken * PRICE_PER_UNIT
+Looking forward to connecting and collaborating with all of you!
 
-# Apply discount if applicable
-if intUnitsTaken >= DISCOUNT_THRESHOLD:
-    tuition_after_discount = tuition - DISCOUNT_AMOUNT
-else:
-    tuition_after_discount = tuition
-
-# Calculate monthly payment
-monthly_payment = tuition_after_discount / 12
-
-# Display results with formatted output
-print(f"Name: {name}")
-print(f"Address: {address}")
-print(f"City: {city}")
-print(f"State: {state}")
-print(f"ZIP code: {zip_code}")
-print(f"The number of units taken is: {intUnitsTaken}")
-print(f"The tuition before discount is: ${tuition:,.2f}")
-print(f"The tuition after 20-unit discount is: ${tuition_after_discount:,.2f}")
-print(f"Your monthly payment is: ${monthly_payment:,.2f}")
-
+Let me know if you’d like a screenshot version of this post!
