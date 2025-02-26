@@ -1,10 +1,42 @@
- 
+ # Declare string variables
+name = "John Smith"
+address = "101 N. Main Street"
+city = "Anytown"
+state = "TX"
+zip_code = "11111"
+units_taken = "19"
 
-The Role of Variables, Constants, and Failure in Growth
+# Declare constant numeric variables
+PRICE_PER_UNIT = 100.50
+DISCOUNT_THRESHOLD = 20
+DISCOUNT_AMOUNT = 150
 
-In our daily lives, we frequently use the concepts of variables and constants, even without realizing it. For example, when preparing a meal, the recipe itself acts as a constant—the core steps remain the same. However, variables come into play when adjusting ingredients based on portion size, dietary preferences, or available substitutes. Similarly, in a workout routine, the type of exercise and structure might remain constant, but factors like duration, intensity, and repetitions vary based on goals and progress.
+# Convert units_taken to an integer
+intUnitsTaken = int(units_taken)
 
-Kevin Kelly’s discussion in What Technology Wants provides an interesting perspective on how technology evolves similarly to living organisms. I agree with his point that failure is essential for growth—in programming, debugging is a critical part of development, and learning from mistakes leads to more efficient and innovative solutions. However, I also believe not all failures result in progress; some failures occur due to poor planning or ethical concerns, which can lead to setbacks rather than advancements. Therefore, while embracing failure is important, it should be intentional and structured, ensuring that lessons are learned and improvements are made.
+# Increment units taken by 1
+intUnitsTaken += 1
 
-In programming, we often see this in Agile methodologies, where iterative testing and continuous feedback allow for small failures that drive overall progress. What do you all think? Have you ever experienced a failure—whether in programming or daily life—that ultimately led to a better outcome?
+# Calculate tuition before discount
+tuition = intUnitsTaken * PRICE_PER_UNIT
+
+# Apply discount if applicable
+if intUnitsTaken >= DISCOUNT_THRESHOLD:
+    tuition_after_discount = tuition - DISCOUNT_AMOUNT
+else:
+    tuition_after_discount = tuition
+
+# Calculate monthly payment
+monthly_payment = tuition_after_discount / 12
+
+# Display results with formatted output
+print(f"Name: {name}")
+print(f"Address: {address}")
+print(f"City: {city}")
+print(f"State: {state}")
+print(f"ZIP code: {zip_code}")
+print(f"The number of units taken is: {intUnitsTaken}")
+print(f"The tuition before discount is: ${tuition:,.2f}")
+print(f"The tuition after 20-unit discount is: ${tuition_after_discount:,.2f}")
+print(f"Your monthly payment is: ${monthly_payment:,.2f}")
 
