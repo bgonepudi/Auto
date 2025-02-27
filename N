@@ -1,8 +1,5 @@
 
 
-Great explanation of constants and variables! I use them often in my coding as well. Before I start coding, I usually create a vision diagram to map out the concept, which helps me plan how to use variables effectively.
-
-I’ve worked with variables extensively, especially when handling dynamic data. They are incredibly useful for iterating over datasets and adjusting outputs based on conditions. Constants also come in handy when defining fixed values like thresholds or configuration settings.
-
-How do you decide when to use a constant versus a variable in your SQL and Python work?
-
+num = 27  # You can replace this with any input number
+cube_root = round(num ** (1/3), 1)  # Calculating the cube root and rounding to 1 decimal place
+print(f"The cube root of {num} is {cube_root}")
