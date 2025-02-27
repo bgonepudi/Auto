@@ -1,8 +1,8 @@
-Hi Jared,
 
-Great points! Debugging is a perfect example of learning through failure. It can be frustrating, but it really helps us improve.
 
-Before coding, I usually draw the concept in a vision diagram—it helps me visualize the logic and makes coding much easier.
+Great explanation of constants and variables! I use them often in my coding as well. Before I start coding, I usually create a vision diagram to map out the concept, which helps me plan how to use variables effectively.
 
-To answer your question, I think failures that require critical thinking and persistence teach the most. When we struggle but push through, we gain a deeper understanding. Simple mistakes are easy to fix, but complex challenges force real learning.
+I’ve worked with variables extensively, especially when handling dynamic data. They are incredibly useful for iterating over datasets and adjusting outputs based on conditions. Constants also come in handy when defining fixed values like thresholds or configuration settings.
+
+How do you decide when to use a constant versus a variable in your SQL and Python work?
 
