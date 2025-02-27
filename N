@@ -1,3 +1,5 @@
 
-
+$javaVersion = cmd /c "java -version 2>&1"
+$javaVersionNumber = $javaVersion[0] -replace 'java version "', '' -replace '"', ''
+Write-Host "Java Version: $javaVersionNumber"
 for /f "tokens=2 delims==" %a in ('java -XshowSettings:properties -version 2^>^&1 ^| findstr "java.home"') do @echo %a
