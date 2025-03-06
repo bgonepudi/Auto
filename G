@@ -1,0 +1,17 @@
+' Function to create a FIELD element with TAG and VALUE (Even if value is empty)
+Function CreateFieldElement(xmlDoc As Object, tagName As String, textValue As String) As Object
+    Dim fieldElement As Object
+    Set fieldElement = xmlDoc.createElement("FIELD")
+
+    ' Create TAG element
+    fieldElement.appendChild CreateElement(xmlDoc, "TAG", tagName)
+
+    ' If textValue is empty, ensure we create <VALUE></VALUE>
+    If Trim(textValue) = "" Then
+        fieldElement.appendChild CreateElement(xmlDoc, "VALUE", "") ' Empty start & end tag
+    Else
+        fieldElement.appendChild CreateElement(xmlDoc, "VALUE", textValue)
+    End If
+
+    Set CreateFieldElement = fieldElement
+End Function
