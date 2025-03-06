@@ -1,6 +1,144 @@
-$javaVersionNumber = $javaVersion[0] -replace 'java version "', '' -replace '"', '' -replace '\s+\d{4}-\d{2}-\d{2}\s+LTS', ''
-Write-Host $javaVersionNumber
-$javaVersion = cmd /c "java -version 2>&1"
-$javaVersionNumber = $javaVersion[0] -replace 'java version "', '' -replace '"', ''
-Write-Host "Java Version: $javaVersionNumber"
-for /f "tokens=2 delims==" %a in ('java -XshowSettings:properties -version 2^>^&1 ^| findstr "java.home"') do @echo %a
+Sub GenerateMultipleXMLFiles()
+    Dim ws As Worksheet
+    Dim lastRow As Long
+    Dim i As Long
+    Dim batchID As String
+    Dim fileName As String
+    Dim folderPath As String
+    Dim xmlDoc As Object
+    Dim xmlRoot As Object
+    Dim xmlBatch As Object
+    Dim xmlBatchAttribute As Object
+    Dim xmlDocument As Object
+    Dim xmlIndexData As Object
+    Dim imageFileValue As String
+
+    ' Define folder path
+    folderPath = ThisWorkbook.Path & "\XMLGenerated"
+    CreateFolderIfNeeded folderPath ' Ensure folder exists
+
+    ' Define worksheet
+    Set ws = ThisWorkbook.Sheets("Data") ' Update to your actual sheet name
+    lastRow = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row ' Get last row
+    
+    ' Show processing status
+    Application.StatusBar = "Generating XML files, please wait..."
+    ws.Range("B1").Value = "Processing XML Files..." ' Show message in Excel
+    
+    ' Loop through each row
+    For i = 2 To lastRow
+        batchID = ws.Cells(i, 1).Value
+        If batchID = "" Then Exit For ' Exit loop if empty
+        
+        Application.StatusBar = "Processing Batch: " & batchID
+        ws.Range("B2").Value = "Processing Batch: " & batchID
+        DoEvents ' Allow UI updates
+        
+        ' Create XML document
+        Set xmlDoc = CreateObject("MSXML2.DOMDocument")
+        xmlDoc.appendChild xmlDoc.createProcessingInstruction("xml", "version=""1.0"" encoding=""UTF-8""")
+        
+        ' Root element
+        Set xmlRoot = xmlDoc.createElement("ROOT")
+        xmlDoc.appendChild xmlRoot
+
+        ' Batch element with dynamic ID
+        Set xmlBatch = xmlDoc.createElement("BATCH")
+        xmlBatch.setAttribute "ID", batchID
+        xmlRoot.appendChild xmlBatch
+
+        ' Batch Attributes
+        Set xmlBatchAttribute = xmlDoc.createElement("BATCH_ATTRIBUTES")
+        xmlBatch.appendChild xmlBatchAttribute
+        xmlBatchAttribute.appendChild CreateElement(xmlDoc, "RECEIPT_DATE", "07/01/2024")
+        xmlBatchAttribute.appendChild CreateElement(xmlDoc, "DOCUMENT_TYPE", "CORRO")
+
+        ' DOCUMENT element
+        Set xmlDocument = xmlDoc.createElement("DOCUMENT")
+        xmlDocument.setAttribute "DOCNUM", ws.Cells(i, 4).Value
+        xmlBatch.appendChild xmlDocument
+
+        ' IMAGE LIST element
+        Dim xmlImageList As Object
+        Set xmlImageList = xmlDoc.createElement("IMAGELIST")
+        xmlDocument.appendChild xmlImageList
+
+        ' PAGE element
+        Dim xmlPage As Object
+        Set xmlPage = xmlDoc.createElement("PAGE")
+        xmlPage.setAttribute "PAGENUM", ws.Cells(i, 5).Value
+        xmlImageList.appendChild xmlPage
+        
+        ' IMAGEFILE Value
+        imageFileValue = ws.Cells(i, 6).Value
+        If imageFileValue = "" Then
+            imageFileValue = "\\mshbtepprpa20\SFTP\sftp root\Source\HOV_PROD\From_Source\HOV\ImageShip\" & batchID
+        End If
+        xmlPage.appendChild CreateElement(xmlDoc, "IMAGEFILE", imageFileValue)
+
+        ' INDEX DATA element
+        Set xmlIndexData = xmlDoc.createElement("INDEX_DATA")
+        xmlDocument.appendChild xmlIndexData
+
+        ' Add index data fields
+        xmlIndexData.appendChild CreateFieldElement(xmlDoc, "MEMBER_NUMBER", ws.Cells(i, 7).Value)
+        xmlIndexData.appendChild CreateFieldElement(xmlDoc, "PROVIDER_NUMBER", ws.Cells(i, 8).Value)
+        xmlIndexData.appendChild CreateFieldElement(xmlDoc, "DATE_OF_SERVICE", ws.Cells(i, 9).Value)
+        xmlIndexData.appendChild CreateFieldElement(xmlDoc, "QUEUE_PEND_CODE", ws.Cells(i, 10).Value)
+        xmlIndexData.appendChild CreateFieldElement(xmlDoc, "CHECK_NUMBER", ws.Cells(i, 11).Value)
+        xmlIndexData.appendChild CreateFieldElement(xmlDoc, "PAYEXCD", ws.Cells(i, 12).Value)
+        xmlIndexData.appendChild CreateFieldElement(xmlDoc, "CHECK_AMOUNT", ws.Cells(i, 13).Value)
+        xmlIndexData.appendChild CreateFieldElement(xmlDoc, "PROCEDURE_CODE", ws.Cells(i, 14).Value)
+        xmlIndexData.appendChild CreateFieldElement(xmlDoc, "DESCRIPTION", ws.Cells(i, 15).Value)
+        xmlIndexData.appendChild CreateFieldElement(xmlDoc, "LOB", ws.Cells(i, 16).Value)
+        xmlIndexData.appendChild CreateFieldElement(xmlDoc, "CLAIMNUMBER", ws.Cells(i, 17).Value)
+
+        ' Save XML document
+        fileName = folderPath & "\" & batchID & ".xml"
+        SaveXMLDocument xmlDoc, fileName
+    Next i
+
+    ' Reset status bar and notify completion
+    Application.StatusBar = "All XML files created successfully!"
+    ws.Range("B1").Value = "Completed!"
+    ws.Range("B2").ClearContents
+
+    MsgBox "All XML files created successfully!", vbInformation, "Process Complete"
+End Sub
+
+' Function to create XML element
+Function CreateElement(xmlDoc As Object, tagName As String, textValue As String) As Object
+    Dim element As Object
+    Set element = xmlDoc.createElement(tagName)
+    element.Text = textValue
+    Set CreateElement = element
+End Function
+
+' Function to create XML field structure
+Function CreateFieldElement(xmlDoc As Object, tagName As String, textValue As String) As Object
+    Dim fieldElement As Object
+    Set fieldElement = xmlDoc.createElement("FIELD")
+    fieldElement.appendChild CreateElement(xmlDoc, "TAG", tagName)
+    fieldElement.appendChild CreateElement(xmlDoc, "VALUE", textValue)
+    Set CreateFieldElement = fieldElement
+End Function
+
+' Function to save XML document
+Sub SaveXMLDocument(xmlDoc As Object, fileName As String)
+    Dim fileNum As Integer
+    On Error Resume Next ' Prevents crashes if file is locked
+    fileNum = FreeFile
+    Open fileName For Output As #fileNum
+    Print #fileNum, xmlDoc.XML
+    Close #fileNum
+    On Error GoTo 0
+End Sub
+
+' Function to create folder if not exists
+Sub CreateFolderIfNeeded(folderPath As String)
+    Dim fso As Object
+    Set fso = CreateObject("Scripting.FileSystemObject")
+    If Not fso.FolderExists(folderPath) Then
+        fso.CreateFolder folderPath
+    End If
+End Sub
