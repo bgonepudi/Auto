@@ -1,0 +1,61 @@
+# Define parameters
+$DaysToDelete = 7  # Change to required retention period
+$TempFolders = @(
+    "C:\Windows\Temp\*",
+    "C:\Temp\*",
+    "$env:USERPROFILE\AppData\Local\Temp\*",
+    "$env:USERPROFILE\Recent\*",
+    "C:\Windows\ccmcache\*",
+    "$env:USERPROFILE\AppData\Local\Microsoft\Windows\Temporary Internet Files\*"
+)
+
+# Function to Enable PowerShell Remoting (If Required)
+function Enable-RemotingIfNeeded {
+    param ([string]$ComputerName)
+    Write-Host "Checking PowerShell remoting on $ComputerName..."
+    if (!(Test-WSMan -ComputerName $ComputerName -ErrorAction SilentlyContinue)) {
+        Write-Host "Remoting not enabled on $ComputerName. Enabling it now..."
+        Invoke-Command -ComputerName $ComputerName -ScriptBlock { Enable-PSRemoting -Force } -Credential (Get-Credential)
+    }
+    else {
+        Write-Host "Remoting is enabled on $ComputerName."
+    }
+}
+
+# Function to Cleanup Temp Folders
+function Cleanup-TempFolders {
+    param ([string]$ComputerName)
+
+    # Ensure the execution policy allows script execution
+    Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+        Set-ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
+    } -Credential (Get-Credential) -ErrorAction SilentlyContinue
+
+    Invoke-Command -ComputerName $ComputerName -ScriptBlock {
+        param ($DaysToDelete, $TempFolders)
+
+        Write-Host "Starting Cleanup on $env:COMPUTERNAME..."
+        Write-Host "Cleaning Temp Folders older than $DaysToDelete days."
+
+        foreach ($Folder in $TempFolders) {
+            Write-Host "Processing: $Folder"
+            $ItemsToDelete = Get-ChildItem -Path $Folder -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$DaysToDelete) }
+            foreach ($Item in $ItemsToDelete) {
+                Write-Host "Deleting: $Item"
+                Remove-Item -Path $Item.FullName -Force -Recurse -ErrorAction SilentlyContinue
+            }
+        }
+
+        Write-Host "Cleanup Completed on $env:COMPUTERNAME."
+    } -ArgumentList $DaysToDelete, $TempFolders -Credential (Get-Credential)
+}
+
+# List of Remote Computers to Clean
+$RemoteComputers = @("Server1", "Server2", "Server3") # Replace with actual names
+
+foreach ($Computer in $RemoteComputers) {
+    Enable-RemotingIfNeeded -ComputerName $Computer
+    Cleanup-TempFolders -ComputerName $Computer
+}
+
+Write-Host "All cleanups completed."
