@@ -5,29 +5,29 @@ Function GetMySQLData()
     Dim strOutput As String
     Dim line As String
     
-    ' Construct PowerShell command to connect and run query
+    ' PowerShell Script with Debugging
     strCmd = "powershell -ExecutionPolicy Bypass -NoProfile -Command " & _
-             """$conn = New-Object MySql.Data.MySqlClient.MySqlConnection;" & _
+             """try { " & _
+             "Add-Type -Path 'C:\Program Files (x86)\MySQL\Connector NET 8.0\MySql.Data.dll';" & _
+             "$conn = New-Object MySql.Data.MySqlClient.MySqlConnection;" & _
              "$conn.ConnectionString='server=your_server;user=your_user;password=your_password;database=your_database';" & _
              "$conn.Open();" & _
-             "$cmd = $conn.CreateCommand();" & _
-             "$cmd.CommandText='SELECT * FROM your_table';" & _
-             "$reader = $cmd.ExecuteReader();" & _
-             "while ($reader.Read()) { Write-Host $reader['column_name'] };" & _
-             "$reader.Close();" & _
-             "$conn.Close();"""
+             "Write-Host 'Connected';" & _
+             "$conn.Close();" & _
+             "} catch { Write-Host 'Error: ' + $_ }""" ' Capture error output
 
     ' Execute PowerShell script
     Set objShell = CreateObject("WScript.Shell")
     Set objExec = objShell.Exec(strCmd)
 
-    ' Read output line by line
+    ' Capture PowerShell Output
     Do While Not objExec.StdOut.AtEndOfStream
         line = objExec.StdOut.ReadLine()
         strOutput = strOutput & line & vbNewLine
     Loop
 
-    ' Return the result
+    ' Show Output in VBA
+    MsgBox strOutput
+
     GetMySQLData = strOutput
 End Function
-
