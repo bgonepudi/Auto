@@ -1,0 +1,17 @@
+SELECT 
+    CASE 
+        WHEN T.TS_NAME LIKE 'TA_%' OR R.RN_TEST_CONFIG LIKE 'TA_%' THEN 'AUTOMATED'
+        ELSE 'MANUAL'
+    END AS Run_Type, 
+    R.RN_STATUS AS Run_Status, 
+    COUNT(R.RN_RUN_ID) AS Run_Count
+FROM [amfc_isqat_db].[td].[RUN] R
+JOIN [amfc_isqat_db].[td].[TEST] T ON R.RN_TEST_ID = T.TS_TEST_ID
+WHERE R.RN_STATUS IN ('Passed', 'Failed')
+GROUP BY 
+    CASE 
+        WHEN T.TS_NAME LIKE 'TA_%' OR R.RN_TEST_CONFIG LIKE 'TA_%' THEN 'AUTOMATED'
+        ELSE 'MANUAL'
+    END,
+    R.RN_STATUS
+ORDER BY Run_Type, R.RN_STATUS;
