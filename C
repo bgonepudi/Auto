@@ -1,66 +1,122 @@
-# Load Excel COM object
-$excel = New-Object -ComObject Excel.Application
-$excel.Visible = $false
+# Define the Excel file path and output directory
+$excelPath = 'C:\Path\To\Input.xlsx'
+$outputDir = 'C:\Path\To\OutputCSVs'
 
-# Set file paths
-$inputFile = "C:\Path\To\Input.xlsx"
-$outputFolder = "C:\Path\To\OutputCSVs"
-$rowsPerFile = 200
-
-# Create output folder if it doesn't exist
-if (-not (Test-Path $outputFolder)) {
-    New-Item -Path $outputFolder -ItemType Directory
+# Create the output directory if it doesn’t exist
+if (-not (Test-Path -LiteralPath $outputDir)) {
+    New-Item -Path $outputDir -ItemType Directory | Out-Null
 }
 
-# Open the workbook
-$workbook = $excel.Workbooks.Open($inputFile)
+# Initialize the Excel COM Object (make Excel run in the background)
+$Excel = New-Object -ComObject Excel.Application
+$Excel.Visible = $false
+$Excel.DisplayAlerts = $false
 
-# List of sheet names to process
-$sheetNames = @("11042024", "01162025", "01172025")
+try {
+    # Open the Excel workbook
+    $Workbook = $Excel.Workbooks.Open($excelPath)
 
-foreach ($sheetName in $sheetNames) {
-    Write-Host "Processing sheet: $sheetName"
+    # Get the total number of worksheets in the workbook
+    $sheetCount = $Workbook.Worksheets.Count
 
-    # Get the worksheet by name
-    $worksheet = $workbook.Sheets.Item($sheetName)
-    $usedRange = $worksheet.UsedRange
-    $rowCount = $usedRange.Rows.Count
-    $columnCount = $usedRange.Columns.Count
+    # Loop through each worksheet in the workbook
+    for ($i = 1; $i -le $sheetCount; $i++) {
+        # Get the worksheet by index
+        $sheet = $Workbook.Worksheets.Item($i)
+        $sheetName = $sheet.Name  # Store the sheet name (for output file naming)
 
-    # Read all data
-    $data = @()
-    for ($row = 1; $row -le $rowCount; $row++) {
-        $rowData = @()
-        for ($col = 1; $col -le $columnCount; $col++) {
-            $value = $worksheet.Cells.Item($row, $col).Text
-            $rowData += $value
+        # Read the used range of the sheet (all used cells with data)
+        $usedRange = $sheet.UsedRange
+        $rowCount = $usedRange.Rows.Count
+        $colCount = $usedRange.Columns.Count
+
+        # If the sheet has no data rows (only header or is empty), skip to the next sheet
+        if ($rowCount -le 1) {
+            # Release COM objects for this sheet and its range, then continue to next
+            [System.Runtime.Interopservices.Marshal]::ReleaseComObject($usedRange) | Out-Null
+            [System.Runtime.Interopservices.Marshal]::ReleaseComObject($sheet) | Out-Null
+            continue
         }
-        $data += ,($rowData -join ",")
+
+        # Get all values from the used range as a 2D array (including header row)
+        $allValues = $usedRange.Value2
+        # Release the UsedRange COM object now that we have the data locally
+        [System.Runtime.Interopservices.Marshal]::ReleaseComObject($usedRange) | Out-Null
+        # We will also release the sheet COM object now to free resources (we have sheetName and data saved)
+        [System.Runtime.Interopservices.Marshal]::ReleaseComObject($sheet) | Out-Null
+
+        # Determine how many chunks of 200 rows (excluding the header) are needed
+        $dataRowCount = $rowCount - 1            # number of data rows (excluding header)
+        $chunks = [Math]::Ceiling($dataRowCount / 200)  # total number of CSV part files for this sheet
+
+        # Loop through each chunk of 200 data rows
+        for ($chunkIndex = 0; $chunkIndex -lt $chunks; $chunkIndex++) {
+            $partNumber = $chunkIndex + 1
+            # Calculate the start and end indices (within $allValues) for this chunk’s data
+            # Note: $allValues is a 2D array where the first index [1,*] is the header row
+            $startDataIndex = 2 + ($chunkIndex * 200)                      # index of first data row in this chunk (2 = first data row after header)
+            $endDataIndex   = [Math]::Min($startDataIndex + 200 - 1, $rowCount)  # index of last data row for this chunk (or last row of sheet)
+
+            # Build the output CSV file path for this chunk (sheet name + part number)
+            $outputFile = Join-Path $outputDir ("{0}-part{1}.csv" -f $sheetName, $partNumber)
+
+            # Prepare an array to hold lines of text for the CSV (first line will be header, followed by chunk data rows)
+            $lines = @()
+
+            # Build the CSV header line (include all columns)
+            $headerElements = @()
+            for ($col = 1; $col -le $colCount; $col++) {
+                $value = $allValues[1, $col]            # header row is at index 1 in $allValues
+                if ($null -eq $value) { $value = "" }   # replace null with empty string if needed
+                $value = $value.ToString()
+                # Escape any quotes in the header text by doubling them
+                $value = $value -replace '"', '""'
+                # If header contains a comma, quote, or newline, wrap it in quotes
+                if ($value.Contains(",") -or $value.Contains('"') -or $value.Contains("`r") -or $value.Contains("`n")) {
+                    $value = '"' + $value + '"'
+                }
+                $headerElements += $value
+            }
+            # Join the header columns into one comma-separated line
+            $headerLine = [string]::Join(',', $headerElements)
+            $lines += $headerLine  # add header as the first line
+
+            # Build CSV lines for each data row in the current chunk
+            for ($rowIndex = $startDataIndex; $rowIndex -le $endDataIndex; $rowIndex++) {
+                $rowElements = @()
+                for ($col = 1; $col -le $colCount; $col++) {
+                    $value = $allValues[$rowIndex, $col]
+                    if ($null -eq $value) { $value = "" }
+                    $value = $value.ToString()
+                    # Escape quotes by doubling them
+                    $value = $value -replace '"', '""'
+                    # Quote the value if it contains a comma, quote, or newline
+                    if ($value.Contains(",") -or $value.Contains('"') -or $value.Contains("`r") -or $value.Contains("`n")) {
+                        $value = '"' + $value + '"'
+                    }
+                    $rowElements += $value
+                }
+                # Join the columns of this row into a comma-separated line and add to the lines array
+                $lines += ([string]::Join(',', $rowElements))
+            }
+
+            # Write the lines for this chunk to a CSV file (overwrites if file exists)
+            $lines | Out-File -FilePath $outputFile -Encoding UTF8
+        }
     }
 
-    # Split and export to CSV
-    $header = $data[0]
-    $dataBody = $data[1..($data.Count - 1)]
-    $fileIndex = 1
-
-    for ($i = 0; $i -lt $dataBody.Count; $i += $rowsPerFile) {
-        $chunk = $dataBody[$i..([Math]::Min($i + $rowsPerFile - 1, $dataBody.Count - 1))]
-        $csvFileName = "$sheetName-part$fileIndex.csv"
-        $filePath = Join-Path $outputFolder $csvFileName
-
-        # Write header + chunk to CSV
-        $header | Out-File -FilePath $filePath -Encoding UTF8
-        $chunk | Out-File -FilePath $filePath -Encoding UTF8 -Append
-        $fileIndex++
-    }
+    # Close the Excel workbook without saving any changes
+    $Workbook.Close($false) | Out-Null
 }
+finally {
+    # Quit the Excel application
+    $Excel.Quit() | Out-Null
 
-# Cleanup
-$workbook.Close($false)
-$excel.Quit()
-[System.Runtime.Interopservices.Marshal]::ReleaseComObject($workbook) | Out-Null
-[System.Runtime.Interopservices.Marshal]::ReleaseComObject($excel) | Out-Null
-[GC]::Collect()
-[GC]::WaitForPendingFinalizers()
+    # Release remaining COM objects to fully quit Excel from memory
+    if ($Workbook) { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($Workbook) | Out-Null }
+    if ($Excel)    { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($Excel) | Out-Null }
 
-Write-Host "Done!"
+    # Garbage collection to ensure all COM objects are released
+    [GC]::Collect()
+    [GC]::WaitForPendingFinalizers()
+}
